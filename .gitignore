@@ -1,0 +1,33 @@
+# ── Entorno — NUNCA al repo
+.env
+.env.local
+.env.*.local
+docker/.env
+
+# ── Node
+node_modules/
+.pnp
+.pnp.js
+
+# ── Next.js
+web/.next/
+web/out/
+web/build/
+
+# ── Backups (solo local)
+backups/
+
+# ── Logs
+*.log
+logs/
+
+# ── OS
+.DS_Store
+Thumbs.db
+
+# ── IDE
+.vscode/settings.json
+.idea/
+
+# ── Docker volúmenes locales (nunca versionar datos de BD)
+docker/mysql/data/

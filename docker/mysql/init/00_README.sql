@@ -1,0 +1,8 @@
+-- Este archivo es el punto de entrada de docker-entrypoint-initdb.d
+-- MySQL lo ejecuta automáticamente al crear la BD por primera vez.
+-- El script principal está en /database/fragify_v2.sql y se monta
+-- como volumen simbólico. Ver docker-compose.yml para la configuración.
+--
+-- Si necesitas re-inicializar la BD desde cero:
+--   docker compose down -v
+--   docker compose up -d

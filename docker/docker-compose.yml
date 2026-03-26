@@ -1,0 +1,96 @@
+# ============================================================
+# Fragify — CS2-SVSS Docker Compose
+# Servicios: mysql + api (backend homelab) + monitor (alertas Telegram)
+# Autor: José Ángel Alejo Sillero
+# ============================================================
+
+services:
+
+  # ── Base de datos MySQL 8.0
+  mysql:
+    image: mysql:8.0
+    container_name: fragify_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: cs2svss
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "127.0.0.1:3307:3306"   # Solo localhost — nunca exponer al exterior
+    volumes:
+      - fragify_mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro   # Se ejecuta al crear la BD
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro           # Config MySQL personalizada
+    networks:
+      - fragify_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── API REST (backend Next.js en homelab)
+  # Expone los endpoints que consume el frontend en Vercel.
+  # nginx en el host enruta fragify-api.miniserver.online → este contenedor.
+  api:
+    build:
+      context: ../web
+      dockerfile: Dockerfile.api
+    container_name: fragify_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/cs2svss
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      API_SECRET: ${API_SECRET}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - fragify_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Monitor de alertas Telegram
+  # Servicio ligero que vigila MySQL, la API y el estado general.
+  # Envía notificaciones a Telegram en los eventos configurados.
+  monitor:
+    build:
+      context: ./monitor
+    container_name: fragify_monitor
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/cs2svss
+      API_URL: http://api:3000
+      FRONTEND_URL: ${NEXT_PUBLIC_APP_URL}
+      CHECK_INTERVAL_MS: 30000      # Cada 30s comprueba servicios
+      NEW_USER_CHECK_MS: 60000      # Cada 60s comprueba nuevos usuarios
+      MONITOR_ENV: ${MONITOR_ENV:-production}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - fragify_net
+
+volumes:
+  fragify_mysql_data:
+    driver: local
+
+networks:
+  fragify_net:
+    driver: bridge

@@ -1,0 +1,14 @@
+{
+  "name": "fragify-monitor",
+  "version": "1.0.0",
+  "description": "Monitor de alertas Telegram para Fragify CS2-SVSS",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.9.0",
+    "node-fetch": "^3.3.2"
+  }
+}

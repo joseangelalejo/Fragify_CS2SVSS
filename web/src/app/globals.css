@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand: #f97316;
+  }
+
+  body {
+    @apply bg-surface-900 text-zinc-100 antialiased;
+  }
+
+  /* Scrollbar oscura */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { @apply bg-surface-800; }
+  ::-webkit-scrollbar-thumb  { @apply bg-surface-500 rounded-full; }
+}
+
+@layer components {
+  /* Tarjeta base */
+  .card {
+    @apply bg-surface-800 border border-surface-600 rounded-xl p-4;
+  }
+
+  /* Badge de tier/rango */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold;
+  }
+
+  /* Skeleton loader */
+  .skeleton {
+    @apply bg-surface-600 rounded animate-pulse;
+  }
+}
