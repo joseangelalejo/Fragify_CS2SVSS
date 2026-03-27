@@ -24,6 +24,21 @@ function tierColor(tier: string) {
   return '#9ca3af'
 }
 
+const tabStyle = (active: boolean) => ({
+  padding: '8px 16px',
+  fontSize: 12,
+  fontWeight: 600,
+  letterSpacing: '0.06em',
+  color: active ? 'var(--t1)' : 'var(--t2)',
+  borderTop: 'none' as const,
+  borderLeft: 'none' as const,
+  borderRight: 'none' as const,
+  borderBottom: active ? '2px solid var(--orange)' : '2px solid transparent',
+  background: 'none',
+  cursor: 'pointer',
+  transition: 'color 0.15s',
+})
+
 export default function RankingPage() {
   const [tab,     setTab]     = useState<'PREMIER'|'COMPETITIVE'>('PREMIER')
   const [players, setPlayers] = useState<Player[]>([])
@@ -49,13 +64,7 @@ export default function RankingPage() {
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:'1px solid var(--bg-border)', marginBottom:24 }}>
         {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding:'8px 16px', fontSize:12, fontWeight:600, letterSpacing:'0.06em',
-            color: tab === t ? 'var(--t1)' : 'var(--t2)',
-            borderBottom: tab === t ? '2px solid var(--orange)' : '2px solid transparent',
-            background:'none', border:'none', borderBottom: tab === t ? '2px solid var(--orange)' : '2px solid transparent',
-            cursor:'pointer', transition:'color 0.15s',
-          }}>
+          <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>
             {t}
           </button>
         ))}
@@ -63,7 +72,8 @@ export default function RankingPage() {
 
       {/* ELO distribution bar chart */}
       {!loading && players.length > 0 && tab === 'PREMIER' && (
-        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)', borderRadius:8, padding:20, marginBottom:24 }}>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                      borderRadius:8, padding:20, marginBottom:24 }}>
           <div style={{ display:'flex', alignItems:'flex-end', height:80, gap:2 }}>
             {Array.from({ length: 28 }, (_, i) => {
               const lo = 1000 + i * 1000
@@ -78,20 +88,25 @@ export default function RankingPage() {
                             lo >= 15000 ? '#818cf8' : lo >= 10000 ? '#67e8f9' :
                             lo >= 7000  ? '#eab308' : '#3b82f6'
               return (
-                <div key={i} title={`${lo.toLocaleString('en-US')}–${hi.toLocaleString('en-US')}: ${count}`}
-                     style={{ flex:1, height:h || 2, background:color, borderRadius:'2px 2px 0 0',
-                               opacity: count > 0 ? 1 : 0.15 }} />
+                <div key={i}
+                     title={`${lo.toLocaleString('en-US')}–${hi.toLocaleString('en-US')}: ${count}`}
+                     style={{ flex:1, height:h || 2, background:color,
+                               borderRadius:'2px 2px 0 0', opacity: count > 0 ? 1 : 0.15 }} />
               )
             })}
           </div>
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:6, fontSize:9, color:'var(--t3)' }}>
-            {['1k','4k','7k','10k','13k','16k','19k','22k','25k','28k'].map(v => <span key={v}>{v}</span>)}
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:6,
+                        fontSize:9, color:'var(--t3)' }}>
+            {['1k','4k','7k','10k','13k','16k','19k','22k','25k','28k'].map(v => (
+              <span key={v}>{v}</span>
+            ))}
           </div>
         </div>
       )}
 
       {/* Table */}
-      <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)', borderRadius:8, overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                    borderRadius:8, overflow:'hidden' }}>
         <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
           <thead>
             <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
@@ -110,22 +125,28 @@ export default function RankingPage() {
                 <tr key={i} style={{ borderBottom:'1px solid #191c28' }}>
                   {Array.from({length:6}).map((_,j) => (
                     <td key={j} style={{ padding:'10px 12px' }}>
-                      <div style={{ height:14, width:'80%', background:'var(--bg-hover)', borderRadius:4,
-                                    animation:'shimmer 1.5s infinite', backgroundSize:'200% 100%' }} />
+                      <div style={{ height:14, width:'80%', background:'var(--bg-hover)',
+                                    borderRadius:4 }} />
                     </td>
                   ))}
                 </tr>
               ))
             ) : players.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
-                No ranking data yet.
-              </td></tr>
+              <tr>
+                <td colSpan={6} style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
+                  No ranking data yet.
+                </td>
+              </tr>
             ) : players.map(p => (
-              <tr key={p.steam_id64} style={{ borderBottom:'1px solid #191c28', transition:'background 0.1s' }}
+              <tr key={p.steam_id64}
+                  style={{ borderBottom:'1px solid #191c28', transition:'background 0.1s' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                <td style={{ padding:'9px 12px', color:'var(--t3)', fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>
-                  {p.ranking_posicion <= 3 ? ['🥇','🥈','🥉'][p.ranking_posicion-1] : p.ranking_posicion}
+                <td style={{ padding:'9px 12px', color:'var(--t3)',
+                              fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>
+                  {p.ranking_posicion <= 3
+                    ? ['🥇','🥈','🥉'][p.ranking_posicion-1]
+                    : p.ranking_posicion}
                 </td>
                 <td style={{ padding:'9px 12px' }}>
                   <Link href={`/player/${p.steam_id64}`}
@@ -139,17 +160,20 @@ export default function RankingPage() {
                   {p.region_geografica ?? '—'}
                 </td>
                 <td style={{ padding:'9px 12px' }}>
-                  <span style={{ color:'var(--orange)', fontFamily:'IBM Plex Mono,monospace', fontWeight:700,
-                                  background:'rgba(249,115,22,0.1)', padding:'2px 8px', borderRadius:3 }}>
-                    {p.puntos_elo.toLocaleString('en-US')}
+                  <span style={{ color:'var(--orange)', fontFamily:'IBM Plex Mono,monospace',
+                                  fontWeight:700, background:'rgba(249,115,22,0.1)',
+                                  padding:'2px 8px', borderRadius:3 }}>
+                    {Number(p.puntos_elo).toLocaleString('en-US')}
                   </span>
                 </td>
                 <td style={{ padding:'9px 12px', color:tierColor(p.tier),
                               fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>
-                  {p.puntos_elo.toLocaleString('en-US')}
+                  {Number(p.puntos_elo).toLocaleString('en-US')}
                 </td>
                 <td style={{ padding:'9px 12px', color:'var(--t3)', fontSize:11 }}>
-                  {new Date(p.ultima_actualizacion).toLocaleDateString('es-ES')}
+                  {new Date(p.ultima_actualizacion).toLocaleDateString('en-US', {
+                    day:'2-digit', month:'short', year:'2-digit'
+                  })}
                 </td>
               </tr>
             ))}
