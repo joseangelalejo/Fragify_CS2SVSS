@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['192.168.24.235'],
   // El frontend en Vercel consume la API del homelab
   async rewrites() {
     return [

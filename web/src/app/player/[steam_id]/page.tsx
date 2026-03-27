@@ -1,142 +1,148 @@
-// src/app/player/[steam_id]/page.tsx
-import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import type { PlayerStats, MatchHistory, EloSnapshot } from '@/lib/types'
+import type { Metadata } from 'next'
+import { query } from '@/lib/db'
+import { PlayerTabs } from './PlayerTabs'
 
 type Props = { params: Promise<{ steam_id: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { steam_id } = await params
-  return { title: `Jugador ${steam_id}` }
+  try {
+    const [p] = await query<{ nombre_usuario_steam: string }[]>(
+      'SELECT nombre_usuario_steam FROM jugadores_cs2 WHERE steam_id64 = ?', [steam_id]
+    )
+    return { title: p?.nombre_usuario_steam ?? steam_id }
+  } catch { return { title: steam_id } }
 }
 
-async function getPlayer(steamId: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/player/${steamId}`,
-    { next: { revalidate: 30 } }
+async function getPlayerData(steamId: string) {
+  // Stats globales
+  const [stats] = await query<any[]>(
+    'SELECT * FROM vw_estadisticas_jugador_resumen WHERE steam_id64 = ?', [steamId]
   )
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error('Error al cargar jugador')
-  return res.json() as Promise<{
-    data: {
-      stats: PlayerStats
-      matches: MatchHistory[]
-      eloHistory: EloSnapshot[]
-      ranking: { puntos_elo: number; tier: string; posicion_global: number | null } | null
-    }
-  }>
+  if (!stats) return null
+
+  // Ranking actual PREMIER
+  const [ranking] = await query<any[]>(`
+    SELECT puntos_elo, tier, posicion_global FROM rankings_cs2
+    WHERE steam_id64 = ? AND tipo_ranking = 'PREMIERE'
+    ORDER BY ultima_actualizacion DESC LIMIT 1`, [steamId])
+
+  // Historial de rankings (sidebar)
+  const rankHistory = await query<any[]>(`
+    SELECT tipo_ranking, tier, puntos_elo, victorias_mapa, ultima_actualizacion, id_mapa,
+           m.nombre_display AS nombre_mapa
+    FROM rankings_cs2 r
+    LEFT JOIN mapas m ON r.id_mapa = m.id_mapa
+    WHERE r.steam_id64 = ?
+    ORDER BY r.ultima_actualizacion DESC`, [steamId])
+
+  // Últimas 50 partidas
+  const matches = await query<any[]>(`
+    SELECT * FROM vw_match_history WHERE steam_id64 = ?
+    ORDER BY fecha_partida DESC LIMIT 50`, [steamId])
+
+  // Rendimiento por mapa
+  const maps = await query<any[]>(`
+    SELECT * FROM vw_rendimiento_por_mapa WHERE steam_id64 = ?
+    ORDER BY total_partidas_mapa DESC`, [steamId])
+
+  // Historial ELO
+  const elo = await query<any[]>(`
+    SELECT puntos_elo, tier, variacion_elo, fecha_snapshot
+    FROM vw_evolucion_elo WHERE steam_id64 = ?
+    ORDER BY fecha_snapshot ASC LIMIT 100`, [steamId])
+
+  return { stats, ranking: ranking ?? null, rankHistory, matches, maps, elo }
 }
 
-export default async function PlayerPage({ params }: Props) {
+export default async function PlayerProfilePage({ params }: Props) {
   const { steam_id } = await params
-
   if (!/^\d{17}$/.test(steam_id)) notFound()
 
-  const result = await getPlayer(steam_id).catch(() => null)
-  if (!result) notFound()
-
-  const { stats, matches, ranking } = result.data
+  const data = await getPlayerData(steam_id).catch(() => null)
+  if (!data) notFound()
 
   return (
-    <div className="space-y-8">
-      {/* Header del jugador */}
-      <div className="card flex items-center gap-6">
-        <div className="w-16 h-16 rounded-full bg-surface-600 flex items-center justify-center text-2xl">
+    <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:16, alignItems:'start' }}>
+      {/* ── Sidebar ── */}
+      <Sidebar stats={data.stats} rankHistory={data.rankHistory} />
+      {/* ── Main content con tabs ── */}
+      <PlayerTabs data={data} />
+    </div>
+  )
+}
+
+function Sidebar({ stats, rankHistory }: { stats: any; rankHistory: any[] }) {
+  const premiers = rankHistory.filter(r => r.tipo_ranking === 'PREMIERE')
+  const maps     = rankHistory.filter(r => r.tipo_ranking === 'MAPA')
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+      {/* Avatar + nombre */}
+      <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+        <div style={{ width:64, height:64, borderRadius:4, background:'var(--bg-border)',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:28 }}>
           🎮
         </div>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{stats.nombre_usuario_steam}</h1>
-          <p className="text-zinc-500 font-mono text-sm">{stats.steam_id64}</p>
+        <div>
+          <div style={{ fontFamily:'Rajdhani,sans-serif', fontSize:18, fontWeight:700, color:'var(--t1)' }}>
+            {stats.nombre_usuario_steam}
+          </div>
           {stats.region_geografica && (
-            <span className="text-xs text-zinc-400 mt-1">
+            <div style={{ fontSize:11, color:'var(--t3)', marginTop:2 }}>
               📍 {stats.region_geografica}
-            </span>
+            </div>
           )}
         </div>
-        {ranking && (
-          <div className="text-right">
-            <p className="text-3xl font-bold text-brand-500 font-mono">
-              {ranking.puntos_elo.toLocaleString()}
-            </p>
-            <p className="text-zinc-400 text-sm">{ranking.tier} · PREMIER</p>
-            {ranking.posicion_global && (
-              <p className="text-zinc-500 text-xs">#{ranking.posicion_global} global</p>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Stats generales */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3 text-zinc-300">Estadísticas globales</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'K/D Ratio',   value: stats.kd_ratio?.toFixed(2) ?? '—' },
-            { label: 'Kills',       value: stats.kills?.toLocaleString() ?? '—' },
-            { label: 'Headshots %', value: stats.ratio_headshots ? `${stats.ratio_headshots}%` : '—' },
-            { label: 'Winrate',     value: `${stats.porcentaje_victorias ?? 0}%` },
-            { label: 'Partidas',    value: stats.total_partidas_jugadas?.toLocaleString() ?? '—' },
-            { label: 'MVPs',        value: stats.mvps?.toLocaleString() ?? '—' },
-            { label: 'ADR',         value: stats.dano_promedio_ronda?.toFixed(1) ?? '—' },
-            { label: 'Precisión',   value: stats.precision_disparo ? `${stats.precision_disparo}%` : '—' },
-          ].map((s) => (
-            <div key={s.label} className="card text-center">
-              <p className="text-xl font-bold text-zinc-100">{s.value}</p>
-              <p className="text-xs text-zinc-500 mt-1">{s.label}</p>
+      {/* CS2 section */}
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:'var(--t3)',
+                    marginBottom:6, paddingBottom:4, borderBottom:'1px solid var(--bg-border)' }}>
+        CS2
+      </div>
+
+      {/* Premier history */}
+      {premiers.length > 0 && (
+        <div style={{ marginBottom:8 }}>
+          {premiers.slice(0,6).map((r, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                                   padding:'5px 0', borderBottom:'1px solid #191c28' }}>
+              <div>
+                <div style={{ fontSize:10, background:'#1a2040', color:'#818cf8',
+                               padding:'1px 6px', borderRadius:3, fontWeight:700, display:'inline-block' }}>
+                  PREMIER
+                </div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--orange)',
+                               fontFamily:'IBM Plex Mono,monospace' }}>
+                  {r.puntos_elo.toLocaleString()}
+                </div>
+                <div style={{ fontSize:10, color:'var(--t3)' }}>
+                  Wins: {r.victorias_mapa ?? '—'}
+                </div>
+              </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Últimas partidas */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3 text-zinc-300">Últimas partidas</h2>
-        {matches.length === 0 ? (
-          <div className="card text-center py-8 text-zinc-500">Sin partidas registradas</div>
-        ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-surface-600 text-zinc-500 text-left">
-                  <th className="pb-3 pr-4">Fecha</th>
-                  <th className="pb-3 pr-4">Mapa</th>
-                  <th className="pb-3 pr-4">Resultado</th>
-                  <th className="pb-3 pr-4 text-right">K/D/A</th>
-                  <th className="pb-3 text-right">ADR</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-700">
-                {matches.map((m) => (
-                  <tr key={`${m.id_partida}-${m.steam_id64}`}
-                      className="hover:bg-surface-700 transition-colors">
-                    <td className="py-2 pr-4 text-zinc-500 text-xs">
-                      {new Date(m.fecha_partida).toLocaleDateString('es-ES')}
-                    </td>
-                    <td className="py-2 pr-4 font-medium">{m.mapa}</td>
-                    <td className="py-2 pr-4">
-                      <span className={`badge ${
-                        m.resultado === 'VICTORIA'
-                          ? 'bg-green-900 text-green-400'
-                          : m.resultado === 'EMPATE'
-                          ? 'bg-zinc-700 text-zinc-400'
-                          : 'bg-red-900 text-red-400'
-                      }`}>
-                        {m.resultado}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4 text-right font-mono text-sm">
-                      {m.kills}/{m.deaths}/{m.assists}
-                    </td>
-                    <td className="py-2 text-right text-zinc-400">
-                      {m.dano_total > 0 ? Math.round(m.dano_total / 24) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Map rankings */}
+      {maps.slice(0,8).map((r, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                               padding:'5px 0', borderBottom:'1px solid #191c28' }}>
+          <div style={{ fontSize:11, color:'var(--t2)' }}>{r.nombre_mapa ?? 'Mapa'}</div>
+          <div style={{ textAlign:'right' }}>
+            <div style={{ fontSize:11, color:'var(--t1)', fontFamily:'IBM Plex Mono,monospace' }}>
+              {r.tier}
+            </div>
+            <div style={{ fontSize:10, color:'var(--t3)' }}>Wins: {r.victorias_mapa ?? '—'}</div>
           </div>
-        )}
-      </div>
+        </div>
+      ))}
     </div>
   )
 }
