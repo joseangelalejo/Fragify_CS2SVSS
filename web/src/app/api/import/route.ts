@@ -34,9 +34,14 @@ export async function POST(req: NextRequest) {
     const hs      = get('total_kills_headshot')
     const mvps    = get('total_mvps')
     const wins    = get('total_wins')
+    const rounds  = get('total_rounds_played')
     const tiempo  = Math.round(get('total_time_played') / 60)
     const kd      = deaths > 0 ? parseFloat((kills / deaths).toFixed(2)) : kills
     const hsRatio = kills  > 0 ? parseFloat((hs / kills * 100).toFixed(2)) : 0
+
+    // Steam no expone partidas totales directamente — estimamos con rondas/24
+    // Garantizamos que total_partidas_jugadas >= total_partidas_ganadas (constraint BD)
+    const partidas_jugadas = Math.max(wins, Math.round(rounds / 24))
 
     // 3 — Upsert jugador
     await query(`
@@ -53,8 +58,10 @@ export async function POST(req: NextRequest) {
     await query(`
       INSERT INTO estadisticas_cs2
         (steam_id64, kills, deaths, headshots, kd_ratio, mvps,
-         tiempo_jugado, ratio_headshots, total_partidas_ganadas, ultima_actualizacion)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+         tiempo_jugado, ratio_headshots,
+         total_partidas_jugadas, total_partidas_ganadas,
+         ultima_actualizacion)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE
         kills                  = VALUES(kills),
         deaths                 = VALUES(deaths),
@@ -63,13 +70,21 @@ export async function POST(req: NextRequest) {
         mvps                   = VALUES(mvps),
         tiempo_jugado          = VALUES(tiempo_jugado),
         ratio_headshots        = VALUES(ratio_headshots),
+        total_partidas_jugadas = VALUES(total_partidas_jugadas),
         total_partidas_ganadas = VALUES(total_partidas_ganadas),
         ultima_actualizacion   = NOW()
-    `, [steam_id, kills, deaths, hs, kd, mvps, tiempo, hsRatio, wins])
+    `, [steam_id, kills, deaths, hs, kd, mvps, tiempo, hsRatio,
+        partidas_jugadas, wins])
 
     return NextResponse.json({
       ok:     true,
-      player: { steam_id, nombre: player.personaname, kills, deaths, kd, wins, hsRatio }
+      player: {
+        steam_id,
+        nombre:          player.personaname,
+        kills, deaths, kd,
+        wins,            partidas_jugadas,
+        hsRatio,
+      }
     })
   } catch (err) {
     console.error('[API /import]', err)
