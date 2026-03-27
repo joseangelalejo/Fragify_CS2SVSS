@@ -47,7 +47,8 @@ export const db: mysql.Pool =
 
 export async function query<T = mysql.RowDataPacket[]>(
   sql: string,
-  values?: unknown[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  values?: any[]
 ): Promise<T> {
   const [rows] = await db.execute(sql, values)
   return rows as T
