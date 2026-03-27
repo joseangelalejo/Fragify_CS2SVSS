@@ -7,7 +7,7 @@ export function Footer() {
           Not affiliated with Valve Corporation. Counter-Strike 2 is a trademark of Valve Corporation.
         </p>
         <p style={{ marginTop:8 }}>
-          © 2026 José Ángel Alejo Sillero · CS2-SVSS · DAW 2024–2026
+          © 2026 José Ángel Alejo Sillero · CS2-SVSS · DAW 2025–2027
         </p>
       </div>
     </footer>
