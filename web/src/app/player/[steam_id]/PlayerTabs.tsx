@@ -101,10 +101,10 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
     <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
       {/* 4 gauges */}
       {[
-        { value: parseFloat((stats.kd_ratio ?? 0).toFixed(2)), label:'K/D',    max:2,   color:'#f97316' },
-        { value: parseFloat((stats.porcentaje_victorias ?? 0).toFixed(0)),  label:'WIN RATE', max:100, color:'#22c55e' },
-        { value: parseFloat((stats.ratio_headshots ?? 0).toFixed(0)),       label:'HS%',      max:100, color:'#3b82f6' },
-        { value: parseFloat((stats.dano_promedio_ronda ?? 0).toFixed(0)),   label:'ADR',      max:200, color:'#eab308' },
+        { value: parseFloat(Number(stats.kd_ratio ?? 0).toFixed(2)),            label:'K/D',      max:2,   color:'#f97316' },
+        { value: parseFloat(Number(stats.porcentaje_victorias ?? 0).toFixed(0)), label:'WIN RATE', max:100, color:'#22c55e' },
+        { value: parseFloat(Number(stats.ratio_headshots ?? 0).toFixed(0)),      label:'HS%',      max:100, color:'#3b82f6' },
+        { value: parseFloat(Number(stats.dano_promedio_ronda ?? 0).toFixed(0)),  label:'ADR',      max:200, color:'#eab308' },
       ].map(g => (
         <div key={g.label} style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8,
                                      padding:20, display:'flex', justifyContent:'center' }}>
@@ -134,7 +134,7 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
           {[
             ['WIN RATE', `${stats.porcentaje_victorias ?? 0}%`],
             ['HS%',      `${stats.ratio_headshots ?? 0}%`],
-            ['ADR',      stats.dano_promedio_ronda?.toFixed(1) ?? '—'],
+            ['ADR',      Number(stats.dano_promedio_ronda ?? 0).toFixed(1)],
           ].map(([l, v]) => (
             <div key={l} style={{ textAlign:'center' }}>
               <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.08em' }}>{l}</div>
