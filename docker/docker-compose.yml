@@ -3,7 +3,6 @@
 # Servicios: mysql + api (Next.js backend) + monitor (Telegram)
 # Autor: José Ángel Alejo Sillero
 # ============================================================
-
 services:
 
   # ── Base de datos MySQL 8.0
@@ -17,7 +16,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "127.0.0.1:3307:3306"   # Solo localhost — no exponer al exterior
+      - "3307:3306"
     volumes:
       - fragify_mysql_data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d:ro
@@ -33,8 +32,8 @@ services:
       start_period: 30s
 
   # ── API REST (Next.js backend)
-  # En producción: nginx en el host enruta fragify-api.miniserver.online → puerto 3001
-  # En dev: acceder directamente a http://localhost:3001
+  # nginx en el host enruta fragify-api.miniserver.online → puerto 3003
+  # Puerto 3001 reservado para Yukiko en este homelab
   api:
     build:
       context: ../web
@@ -43,16 +42,15 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      # mysql:3306 → nombre de servicio Docker, resuelto internamente
       DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/cs2svss
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       API_SECRET: ${API_SECRET}
       CRON_SECRET: ${CRON_SECRET}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-      API_URL: http://localhost:3000
+      API_URL: http://localhost:3003
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:3003:3000"
     depends_on:
       mysql:
         condition: service_healthy
