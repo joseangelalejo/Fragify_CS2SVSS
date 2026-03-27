@@ -78,7 +78,7 @@ export default function RankingPage() {
                             lo >= 15000 ? '#818cf8' : lo >= 10000 ? '#67e8f9' :
                             lo >= 7000  ? '#eab308' : '#3b82f6'
               return (
-                <div key={i} title={`${lo.toLocaleString()}–${hi.toLocaleString()}: ${count}`}
+                <div key={i} title={`${lo.toLocaleString('en-US')}–${hi.toLocaleString('en-US')}: ${count}`}
                      style={{ flex:1, height:h || 2, background:color, borderRadius:'2px 2px 0 0',
                                opacity: count > 0 ? 1 : 0.15 }} />
               )
@@ -141,12 +141,12 @@ export default function RankingPage() {
                 <td style={{ padding:'9px 12px' }}>
                   <span style={{ color:'var(--orange)', fontFamily:'IBM Plex Mono,monospace', fontWeight:700,
                                   background:'rgba(249,115,22,0.1)', padding:'2px 8px', borderRadius:3 }}>
-                    {p.puntos_elo.toLocaleString()}
+                    {p.puntos_elo.toLocaleString('en-US')}
                   </span>
                 </td>
                 <td style={{ padding:'9px 12px', color:tierColor(p.tier),
                               fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>
-                  {p.puntos_elo.toLocaleString()}
+                  {p.puntos_elo.toLocaleString('en-US')}
                 </td>
                 <td style={{ padding:'9px 12px', color:'var(--t3)', fontSize:11 }}>
                   {new Date(p.ultima_actualizacion).toLocaleDateString('es-ES')}
