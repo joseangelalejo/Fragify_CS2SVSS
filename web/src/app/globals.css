@@ -1,35 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --brand: #f97316;
+    --bg-deep:   #0b0c10;
+    --bg-main:   #0f1014;
+    --bg-card:   #151720;
+    --bg-hover:  #1c1f2e;
+    --bg-border: #252836;
+    --orange:    #f97316;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --blue:      #3b82f6;
+    --gold:      #eab308;
+    --t1:        #f1f2f5;
+    --t2:        #9ca3af;
+    --t3:        #4b5563;
   }
-
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    @apply bg-surface-900 text-zinc-100 antialiased;
+    background-color: var(--bg-deep);
+    color: var(--t1);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
-
-  /* Scrollbar oscura */
-  ::-webkit-scrollbar        { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track  { @apply bg-surface-800; }
-  ::-webkit-scrollbar-thumb  { @apply bg-surface-500 rounded-full; }
+  h1,h2,h3,h4 { font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.02em; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg-main); }
+  ::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 3px; }
 }
 
 @layer components {
-  /* Tarjeta base */
-  .card {
-    @apply bg-surface-800 border border-surface-600 rounded-xl p-4;
-  }
-
-  /* Badge de tier/rango */
-  .badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold;
-  }
-
-  /* Skeleton loader */
-  .skeleton {
-    @apply bg-surface-600 rounded animate-pulse;
-  }
+  .card { background: var(--bg-card); border: 1px solid var(--bg-border); border-radius: 8px; }
+  .tab { padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--t2); border-bottom: 2px solid transparent; cursor: pointer; transition: color 0.15s; white-space: nowrap; }
+  .tab:hover { color: var(--t1); }
+  .tab.active { color: var(--t1); border-bottom-color: var(--orange); }
+  .badge-win  { font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; background:rgba(34,197,94,0.12); color:#22c55e; }
+  .badge-loss { font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; background:rgba(239,68,68,0.12); color:#ef4444; }
+  .badge-tie  { font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; background:rgba(156,163,175,0.1); color:#9ca3af; }
+  .data-table { width:100%; font-size:13px; }
+  .data-table thead tr { border-bottom: 1px solid var(--bg-border); }
+  .data-table thead th { padding:10px 12px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--t3); font-weight:500; }
+  .data-table tbody tr { border-bottom: 1px solid #191c28; transition: background 0.1s; }
+  .data-table tbody tr:hover { background: var(--bg-hover); }
+  .data-table tbody td { padding:9px 12px; }
+  .skeleton { background: linear-gradient(90deg,var(--bg-card) 25%,var(--bg-hover) 50%,var(--bg-card) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:4px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .tier-silver   { color:#9ca3af; }
+  .tier-gold     { color:#eab308; }
+  .tier-platinum { color:#67e8f9; }
+  .tier-diamond  { color:#818cf8; }
+  .tier-master   { color:#c084fc; }
+  .tier-elite    { color:#f472b6; }
+  .tier-supreme  { color:#fb923c; }
+  .tier-global   { color:#f97316; }
 }

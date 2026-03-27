@@ -29,5 +29,6 @@ Thumbs.db
 .vscode/settings.json
 .idea/
 
-# ── Docker volúmenes locales (nunca versionar datos de BD)
+# ── Docker datos locales
 docker/mysql/data/
+docker/package-lock.json

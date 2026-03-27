@@ -1,9 +1,8 @@
 # ============================================================
-# Fragify — CS2-SVSS Docker Compose
-# Servicios: mysql + api (backend homelab) + monitor (alertas Telegram)
+# Fragify — Docker Compose
+# Servicios: mysql + api (Next.js backend) + monitor (Telegram)
 # Autor: José Ángel Alejo Sillero
 # ============================================================
-
 services:
 
   # ── Base de datos MySQL 8.0
@@ -17,11 +16,11 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "127.0.0.1:3307:3306"   # Solo localhost — nunca exponer al exterior
+      - "3307:3306"
     volumes:
       - fragify_mysql_data:/var/lib/mysql
-      - ./mysql/init:/docker-entrypoint-initdb.d:ro   # Se ejecuta al crear la BD
-      - ./mysql/conf.d:/etc/mysql/conf.d:ro           # Config MySQL personalizada
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro
     networks:
       - fragify_net
     healthcheck:
@@ -32,9 +31,9 @@ services:
       retries: 5
       start_period: 30s
 
-  # ── API REST (backend Next.js en homelab)
-  # Expone los endpoints que consume el frontend en Vercel.
-  # nginx en el host enruta fragify-api.miniserver.online → este contenedor.
+  # ── API REST (Next.js backend)
+  # nginx en el host enruta fragify-api.miniserver.online → puerto 3003
+  # Puerto 3001 reservado para Yukiko en este homelab
   api:
     build:
       context: ../web
@@ -47,9 +46,11 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       API_SECRET: ${API_SECRET}
+      CRON_SECRET: ${CRON_SECRET}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      API_URL: http://localhost:3003
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:3003:3000"
     depends_on:
       mysql:
         condition: service_healthy
@@ -60,11 +61,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
 
   # ── Monitor de alertas Telegram
-  # Servicio ligero que vigila MySQL, la API y el estado general.
-  # Envía notificaciones a Telegram en los eventos configurados.
   monitor:
     build:
       context: ./monitor
@@ -76,8 +75,8 @@ services:
       DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/cs2svss
       API_URL: http://api:3000
       FRONTEND_URL: ${NEXT_PUBLIC_APP_URL}
-      CHECK_INTERVAL_MS: 30000      # Cada 30s comprueba servicios
-      NEW_USER_CHECK_MS: 60000      # Cada 60s comprueba nuevos usuarios
+      CHECK_INTERVAL_MS: 30000
+      NEW_USER_CHECK_MS: 60000
       MONITOR_ENV: ${MONITOR_ENV:-production}
     depends_on:
       mysql:

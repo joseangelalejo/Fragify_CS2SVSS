@@ -1,4 +1,5 @@
 // src/app/api/health/route.ts
+// Health check endpoint — usado por Docker healthcheck y el monitor
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
@@ -9,10 +10,12 @@ export async function GET() {
       status: 'ok',
       db: 'connected',
       timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV,
     })
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json(
-      { status: 'error', db: 'disconnected' },
+      { status: 'error', db: 'disconnected', error: msg },
       { status: 503 }
     )
   }

@@ -1,0 +1,16 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["mad1"],
+  "env": {
+    "DATABASE_URL": "@fragify-database-url",
+    "TELEGRAM_BOT_TOKEN": "@fragify-telegram-token",
+    "TELEGRAM_CHAT_ID": "@fragify-telegram-chat-id",
+    "API_SECRET": "@fragify-api-secret",
+    "CRON_SECRET": "@fragify-cron-secret",
+    "NEXT_PUBLIC_APP_URL": "@fragify-app-url",
+    "API_URL": "@fragify-api-url"
+  }
+}
