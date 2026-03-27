@@ -1,0 +1,41 @@
+# ============================================================
+# Fragify API — Dockerfile de producción
+# Next.js 16 standalone build para el backend en homelab
+# ============================================================
+FROM node:20-alpine AS base
+
+# ── Dependencias
+FROM base AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+# ── Build
+FROM base AS builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+# Variables dummy para el build estático (los valores reales van en runtime via Docker env)
+ENV DATABASE_URL="mysql://build:build@localhost:3306/cs2svss"
+ENV NEXT_PUBLIC_APP_URL="https://fragify.miniserver.online"
+RUN npm run build
+
+# ── Runner
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
