@@ -1,12 +1,11 @@
 // src/app/player/[steam_id]/page.tsx
-// Auto-import: si el jugador no está en BD, lo importa desde Steam automáticamente
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { query } from '@/lib/db'
 import { PlayerTabs } from './PlayerTabs'
 
 type Props = { params: Promise<{ steam_id: string }> }
-
 export const dynamic = 'force-dynamic'
 
 const STEAM_KEY  = process.env.STEAM_API_KEY
@@ -39,7 +38,6 @@ async function importFromSteam(steamId: string): Promise<boolean> {
     const hsRatio = kills  > 0 ? parseFloat((hs / kills * 100).toFixed(2)) : 0
     const partidas_jugadas = Math.max(wins, Math.round(rounds / 24))
 
-    // Comprobar límite de 500 jugadores
     const countRows = await query<any[]>('SELECT COUNT(*) AS total FROM jugadores_cs2')
     if ((countRows[0]?.total ?? 0) >= 500) return false
 
@@ -79,25 +77,32 @@ async function importFromSteam(steamId: string): Promise<boolean> {
   }
 }
 
+async function getSteamProfile(steamId: string) {
+  if (!STEAM_KEY) return null
+  try {
+    const res  = await fetch(
+      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_KEY}&steamids=${steamId}`,
+      { next: { revalidate: 300 } }
+    )
+    const data = await res.json()
+    return data.response?.players?.[0] ?? null
+  } catch { return null }
+}
+
 async function getPlayerData(steamId: string) {
   try {
-    // Stats globales
     const [stats] = await query<any[]>(
       'SELECT * FROM vw_estadisticas_jugador_resumen WHERE steam_id64 = ?', [steamId]
     )
-
-    // Si no existe en BD → intentar importar desde Steam
     if (!stats) {
       const imported = await importFromSteam(steamId)
       if (!imported) return null
-      // Reintentar tras importar
       const [newStats] = await query<any[]>(
         'SELECT * FROM vw_estadisticas_jugador_resumen WHERE steam_id64 = ?', [steamId]
       )
       if (!newStats) return null
       return buildPlayerData(steamId, newStats)
     }
-
     return buildPlayerData(steamId, stats)
   } catch (err) {
     console.error('[getPlayerData]', err)
@@ -149,76 +154,149 @@ export default async function PlayerProfilePage({ params }: Props) {
   const { steam_id } = await params
   if (!/^\d{17}$/.test(steam_id)) notFound()
 
-  const data = await getPlayerData(steam_id)
+  const [data, steamProfile] = await Promise.all([
+    getPlayerData(steam_id),
+    getSteamProfile(steam_id),
+  ])
   if (!data) notFound()
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:16, alignItems:'start' }}>
-      <Sidebar stats={data.stats} rankHistory={data.rankHistory ?? []} />
+    <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', gap:20, alignItems:'start' }}>
+      <Sidebar stats={data.stats} rankHistory={data.rankHistory ?? []} steamProfile={steamProfile} steamId={steam_id} />
       <PlayerTabs data={data} />
     </div>
   )
 }
 
-function Sidebar({ stats, rankHistory }: { stats: any; rankHistory: any[] }) {
+function tierBadgeColor(tier: string) {
+  const t = (tier ?? '').toLowerCase()
+  if (t.includes('global') || t.includes('elite'))   return { bg:'rgba(249,115,22,0.15)', color:'#f97316' }
+  if (t.includes('supreme') || t.includes('master'))  return { bg:'rgba(192,132,252,0.15)', color:'#c084fc' }
+  if (t.includes('legendary') || t.includes('legend'))return { bg:'rgba(251,191,36,0.15)', color:'#fbbf24' }
+  if (t.includes('distinguished'))                    return { bg:'rgba(96,165,250,0.15)', color:'#60a5fa' }
+  if (t.includes('guardian') || t.includes('gold'))   return { bg:'rgba(234,179,8,0.15)',  color:'#eab308' }
+  return { bg:'rgba(100,116,139,0.15)', color:'#94a3b8' }
+}
+
+function Sidebar({ stats, rankHistory, steamProfile, steamId }: {
+  stats: any; rankHistory: any[]; steamProfile: any; steamId: string
+}) {
   const premiers = rankHistory.filter(r => r.tipo_ranking === 'PREMIERE')
   const maps     = rankHistory.filter(r => r.tipo_ranking === 'MAPA')
+  const avatarUrl= steamProfile?.avatarfull ?? steamProfile?.avatarmedium ?? null
+  const name     = stats.nombre_usuario_steam
+  const played   = Number(stats.total_partidas_jugadas ?? 0)
+  const won      = Number(stats.total_partidas_ganadas ?? 0)
+  const kills    = Number(stats.kills ?? 0)
+  const kd       = Number(stats.kd_ratio ?? 0)
+  const hoursPlayed = stats.tiempo_jugado ? Math.round(Number(stats.tiempo_jugado) / 60) : null
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-      <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
-        <div style={{ width:64, height:64, borderRadius:4, background:'var(--bg-border)',
-                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>
-          🎮
-        </div>
-        <div>
-          <div style={{ fontFamily:'Rajdhani,sans-serif', fontSize:18, fontWeight:700, color:'var(--t1)' }}>
-            {stats.nombre_usuario_steam}
+
+      {/* Avatar + nombre */}
+      <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                    borderRadius:8, padding:16, marginBottom:12 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+          <div style={{ width:64, height:64, borderRadius:6, overflow:'hidden', flexShrink:0,
+                        background:'var(--bg-border)', position:'relative' }}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={name} width={64} height={64}
+                   style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            ) : (
+              <div style={{ width:64, height:64, display:'flex', alignItems:'center',
+                             justifyContent:'center', fontSize:28, background:'var(--bg-border)' }}>
+                🎮
+              </div>
+            )}
           </div>
-          {stats.region_geografica && (
-            <div style={{ fontSize:11, color:'var(--t3)', marginTop:2 }}>
-              📍 {stats.region_geografica}
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontFamily:'Rajdhani,sans-serif', fontSize:16, fontWeight:700,
+                           color:'var(--t1)', overflow:'hidden', textOverflow:'ellipsis',
+                           whiteSpace:'nowrap' }}>
+              {name}
             </div>
-          )}
+            {stats.region_geografica && (
+              <div style={{ fontSize:11, color:'var(--t3)', marginTop:2 }}>
+                📍 {stats.region_geografica}
+              </div>
+            )}
+            <a href={`https://steamcommunity.com/profiles/${steamId}`}
+               target="_blank" rel="noopener noreferrer"
+               style={{ fontSize:10, color:'var(--orange)', textDecoration:'none',
+                         display:'inline-flex', alignItems:'center', gap:3, marginTop:3 }}>
+              Steam Profile ↗
+            </a>
+          </div>
+        </div>
+
+        {/* Mini stats */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {[
+            { label:'MATCHES', value: played.toLocaleString('en-US') },
+            { label:'WINS',    value: won.toLocaleString('en-US') },
+            { label:'KILLS',   value: kills.toLocaleString('en-US') },
+            { label:'K/D',     value: kd.toFixed(2) },
+            ...(hoursPlayed ? [{ label:'HOURS', value: hoursPlayed.toLocaleString('en-US') }] : []),
+          ].map(s => (
+            <div key={s.label} style={{ background:'#0d0e13', borderRadius:6, padding:'8px 10px' }}>
+              <div style={{ fontSize:9, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:2 }}>{s.label}</div>
+              <div style={{ fontSize:14, fontFamily:'IBM Plex Mono,monospace', fontWeight:600, color:'var(--t1)' }}>
+                {s.value}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:'var(--t3)',
-                    marginBottom:6, paddingBottom:4, borderBottom:'1px solid var(--bg-border)' }}>
-        CS2
-      </div>
-
-      {premiers.slice(0,6).map((r, i) => (
-        <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-                               padding:'5px 0', borderBottom:'1px solid #191c28' }}>
-          <span style={{ fontSize:10, background:'#1a2040', color:'#818cf8',
-                          padding:'1px 6px', borderRadius:3, fontWeight:700 }}>
-            PREMIER
-          </span>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--orange)',
-                           fontFamily:'IBM Plex Mono,monospace' }}>
-              {r.puntos_elo?.toLocaleString()}
-            </div>
-            <div style={{ fontSize:10, color:'var(--t3)' }}>
-              Wins: {r.victorias_mapa ?? '—'}
-            </div>
+      {/* Premier */}
+      {premiers.length > 0 && (
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                      borderRadius:8, padding:12, marginBottom:8 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)',
+                        marginBottom:8 }}>
+            CS2 PREMIER
           </div>
+          {premiers.slice(0,3).map((r, i) => {
+            const { bg, color } = tierBadgeColor(r.tier)
+            return (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                                     padding:'6px 0', borderBottom: i < premiers.length-1 ? '1px solid #191c28' : 'none' }}>
+                <span style={{ fontSize:11, background:bg, color, padding:'2px 7px',
+                                borderRadius:4, fontWeight:700 }}>
+                  {r.tier ?? 'PREMIER'}
+                </span>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:'var(--orange)',
+                                 fontFamily:'IBM Plex Mono,monospace' }}>
+                    {Number(r.puntos_elo).toLocaleString('en-US')}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
-      ))}
+      )}
 
-      {maps.slice(0,8).map((r, i) => (
-        <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-                               padding:'5px 0', borderBottom:'1px solid #191c28' }}>
-          <span style={{ fontSize:11, color:'var(--t2)' }}>{r.nombre_mapa ?? 'Mapa'}</span>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:11, color:'var(--t1)', fontFamily:'IBM Plex Mono,monospace' }}>
-              {r.tier}
-            </div>
-            <div style={{ fontSize:10, color:'var(--t3)' }}>Wins: {r.victorias_mapa ?? '—'}</div>
+      {/* Map rankings */}
+      {maps.length > 0 && (
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                      borderRadius:8, padding:12 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)',
+                        marginBottom:8 }}>
+            CS2 COMPETITIVE
           </div>
+          {maps.slice(0,6).map((r, i) => (
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                                   padding:'5px 0', borderBottom: i < maps.length-1 ? '1px solid #191c28' : 'none' }}>
+              <span style={{ fontSize:11, color:'var(--t2)' }}>{r.nombre_mapa ?? 'Map'}</span>
+              <span style={{ fontSize:11, color:'var(--t1)', fontFamily:'IBM Plex Mono,monospace' }}>
+                {r.tier}
+              </span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

@@ -1,32 +1,28 @@
-// src/app/page.tsx
 import Link from 'next/link'
+import { query } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 async function getStats() {
   try {
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    const res = await fetch(`${base}/api/health`, { cache: 'no-store' })
-    // El health solo comprueba conexión; los contadores los hacemos con otra llamada
-    if (!res.ok) return { players: 0, matches: 0, reports: 0 }
-    // Llamar API de stats globales
-    const { query } = await import('@/lib/db')
-    const [[r]] = await query<[{ players: number; matches: number; reports: number }]>(`
+    const rows = await query<any[]>(`
       SELECT
-        (SELECT COUNT(*) FROM jugadores_cs2)    AS players,
-        (SELECT COUNT(*) FROM partidas_cs2)     AS matches,
+        (SELECT COUNT(*) FROM jugadores_cs2)     AS players,
+        (SELECT COUNT(*) FROM partidas_cs2)      AS matches,
         (SELECT COUNT(*) FROM reportes_conducta) AS reports
     `)
-    return r
-  } catch {
-    return { players: 0, matches: 0, reports: 0 }
-  }
+    return {
+      players: Number(rows[0]?.players ?? 0),
+      matches: Number(rows[0]?.matches ?? 0),
+      reports: Number(rows[0]?.reports ?? 0),
+    }
+  } catch { return { players: 0, matches: 0, reports: 0 } }
 }
 
 function fmt(n: number) {
   if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'
   if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'
-  return String(n)
+  return n.toLocaleString('en-US')
 }
 
 export default async function HomePage() {
@@ -46,11 +42,10 @@ export default async function HomePage() {
           <code style={{ color:'var(--orange)', fontSize:13 }}>x</code>{' '}
           to the start of any steamcommunity.com URL.
         </p>
-
         <form action="/player" method="get"
               style={{ display:'flex', gap:8, maxWidth:560, margin:'0 auto 16px' }}>
           <input name="q"
-                 placeholder="Search for a player (Steam ID / Steam Profile Link / Custom Steam URL)"
+                 placeholder="Steam ID, profile URL, or vanity name"
                  style={{ flex:1, background:'#0d0e13', border:'1px solid var(--bg-border)',
                           borderRadius:6, padding:'10px 14px', fontSize:13, color:'var(--t1)',
                           outline:'none' }} />
@@ -67,7 +62,7 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {/* Contadores globales */}
+      {/* Contadores */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24,
                     maxWidth:600, margin:'0 auto 56px' }}>
         {[
