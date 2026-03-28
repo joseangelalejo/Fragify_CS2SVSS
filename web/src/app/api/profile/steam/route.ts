@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest) {
   const { sharecode_cs2, sharecode_csgo } = await req.json()
 
   // Validar formato sharecode (STEAM_X:X:XXXXXXXXXX o formato nuevo)
-  if (sharecode_cs2 && !/^CSGO(-[A-Z0-9]{5}){5}$/.test(sharecode_cs2) && !/^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$/.test(sharecode_cs2))
+  if (sharecode_cs2 && !/^CSGO(-[A-Za-z0-9]{5}){5}$/i.test(sharecode_cs2) && !/^[A-Za-z0-9]{5}(-[A-Za-z0-9]{5}){4}$/i.test(sharecode_cs2))
     return NextResponse.json({ error: 'Invalid CS2 sharecode format' }, { status: 400 })
 
   await query(
