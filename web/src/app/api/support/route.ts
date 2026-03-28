@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { sendTelegram } from '@/lib/telegram'
 
 function getIP(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '0.0.0.0'
@@ -44,6 +45,19 @@ export async function POST(req: NextRequest) {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [nombre.trim(), email.toLowerCase().trim(), asunto.trim(), mensaje.trim(), cat, userId, ip]
     )
+
+    // Notificar por Telegram
+    const userInfo = userId ? `Usuario ID: \`${userId}\`` : 'Usuario anónimo'
+    await sendTelegram(
+      `🎫 *Nuevo ticket de soporte*\n` +
+      `📋 Categoría: \`${cat}\`\n` +
+      `👤 Nombre: \`${nombre.trim()}\`\n` +
+      `📧 Email: \`${email.toLowerCase().trim()}\`\n` +
+      `${userInfo}\n` +
+      `📝 Asunto: \`${asunto.trim()}\`\n` +
+      `💬 Mensaje:\n${mensaje.trim().slice(0, 300)}${mensaje.length > 300 ? '...' : ''}`,
+      '🆘'
+    ).catch(() => {}) // no bloquear si falla Telegram
 
     return NextResponse.json({ ok: true })
   } catch (err) {

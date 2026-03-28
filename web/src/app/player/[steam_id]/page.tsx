@@ -1,7 +1,6 @@
 // src/app/player/[steam_id]/page.tsx
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import { query } from '@/lib/db'
 import { PlayerTabs } from './PlayerTabs'
 
@@ -33,10 +32,14 @@ async function importFromSteam(steamId: string): Promise<boolean> {
     const mvps    = get('total_mvps')
     const wins    = get('total_wins')
     const rounds  = get('total_rounds_played')
+    // CS2 API: tiempo en segundos
     const tiempo  = Math.round(get('total_time_played') / 60)
-    const kd      = deaths > 0 ? parseFloat((kills / deaths).toFixed(2)) : kills
+    const kd      = deaths > 0 ? parseFloat((kills / deaths).toFixed(2)) : kills > 0 ? kills : 0
     const hsRatio = kills  > 0 ? parseFloat((hs / kills * 100).toFixed(2)) : 0
-    const partidas_jugadas = Math.max(wins, Math.round(rounds / 24))
+    // Estimación más conservadora: rounds/24 suele sobreestimar mucho,
+    // usamos wins como mínimo y rounds/30 como estimación de partidas total
+    const partidas_estimadas = Math.round(rounds / 30)
+    const partidas_jugadas   = wins > 0 ? Math.max(wins, partidas_estimadas) : partidas_estimadas
 
     const countRows = await query<any[]>('SELECT COUNT(*) AS total FROM jugadores_cs2')
     if ((countRows[0]?.total ?? 0) >= 500) return false
@@ -86,6 +89,36 @@ async function getSteamProfile(steamId: string) {
     )
     const data = await res.json()
     return data.response?.players?.[0] ?? null
+  } catch { return null }
+}
+
+async function getCsgoStats(steamId: string) {
+  if (!STEAM_KEY) return null
+  try {
+    const res  = await fetch(
+      `https://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v2/?key=${STEAM_KEY}&steamid=${steamId}&appid=730`,
+      { next: { revalidate: 3600 } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    // La API de CS:GO (730) devuelve stats acumuladas de CS:GO + CS2 mezcladas.
+    // Solo las mostramos como referencia histórica.
+    const stats = data.playerstats?.stats ?? []
+    if (stats.length === 0) return null
+    const get = (name: string) => stats.find((s: any) => s.name === name)?.value ?? 0
+
+    const kills   = get('total_kills')
+    const deaths  = get('total_deaths')
+    const hs      = get('total_kills_headshot')
+    const wins    = get('total_wins')
+    const rounds  = get('total_rounds_played')
+    const tiempo  = Math.round(get('total_time_played') / 3600) // en horas
+    const mvps    = get('total_mvps')
+    const kd      = deaths > 0 ? parseFloat((kills / deaths).toFixed(2)) : 0
+    const hsRatio = kills  > 0 ? Math.round(hs / kills * 100) : 0
+    const matches = Math.round(rounds / 30)
+
+    return { kills, deaths, hs, wins, rounds, tiempo, mvps, kd, hsRatio, matches }
   } catch { return null }
 }
 
@@ -146,7 +179,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const [p] = await query<any[]>(
       'SELECT nombre_usuario_steam FROM jugadores_cs2 WHERE steam_id64 = ?', [steam_id]
     )
-    return { title: p?.nombre_usuario_steam ?? steam_id }
+    return { title: p?.nombre_usuario_steam ? `${p.nombre_usuario_steam} — Fragify` : steam_id }
   } catch { return { title: steam_id } }
 }
 
@@ -154,23 +187,46 @@ export default async function PlayerProfilePage({ params }: Props) {
   const { steam_id } = await params
   if (!/^\d{17}$/.test(steam_id)) notFound()
 
-  const [data, steamProfile] = await Promise.all([
+  const [data, steamProfile, csgoStats] = await Promise.all([
     getPlayerData(steam_id),
     getSteamProfile(steam_id),
+    getCsgoStats(steam_id),
   ])
   if (!data) notFound()
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', gap:20, alignItems:'start' }}>
-      <Sidebar stats={data.stats} rankHistory={data.rankHistory ?? []} steamProfile={steamProfile} steamId={steam_id} />
-      <PlayerTabs data={data} />
-    </div>
+    <>
+      {/* Responsive: sidebar arriba en móvil, lado en desktop */}
+      <style>{`
+        .player-layout {
+          display: grid;
+          grid-template-columns: 220px 1fr;
+          gap: 20px;
+          align-items: start;
+        }
+        @media (max-width: 768px) {
+          .player-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+      <div className="player-layout">
+        <Sidebar
+          stats={data.stats}
+          rankHistory={data.rankHistory ?? []}
+          steamProfile={steamProfile}
+          steamId={steam_id}
+          csgoStats={csgoStats}
+        />
+        <PlayerTabs data={data} csgoStats={csgoStats} />
+      </div>
+    </>
   )
 }
 
 function tierBadgeColor(tier: string) {
   const t = (tier ?? '').toLowerCase()
-  if (t.includes('global') || t.includes('elite'))   return { bg:'rgba(249,115,22,0.15)', color:'#f97316' }
+  if (t.includes('global') || t.includes('elite'))    return { bg:'rgba(249,115,22,0.15)', color:'#f97316' }
   if (t.includes('supreme') || t.includes('master'))  return { bg:'rgba(192,132,252,0.15)', color:'#c084fc' }
   if (t.includes('legendary') || t.includes('legend'))return { bg:'rgba(251,191,36,0.15)', color:'#fbbf24' }
   if (t.includes('distinguished'))                    return { bg:'rgba(96,165,250,0.15)', color:'#60a5fa' }
@@ -178,17 +234,17 @@ function tierBadgeColor(tier: string) {
   return { bg:'rgba(100,116,139,0.15)', color:'#94a3b8' }
 }
 
-function Sidebar({ stats, rankHistory, steamProfile, steamId }: {
-  stats: any; rankHistory: any[]; steamProfile: any; steamId: string
+function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats }: {
+  stats: any; rankHistory: any[]; steamProfile: any; steamId: string; csgoStats: any
 }) {
-  const premiers = rankHistory.filter(r => r.tipo_ranking === 'PREMIERE')
-  const maps     = rankHistory.filter(r => r.tipo_ranking === 'MAPA')
-  const avatarUrl= steamProfile?.avatarfull ?? steamProfile?.avatarmedium ?? null
-  const name     = stats.nombre_usuario_steam
-  const played   = Number(stats.total_partidas_jugadas ?? 0)
-  const won      = Number(stats.total_partidas_ganadas ?? 0)
-  const kills    = Number(stats.kills ?? 0)
-  const kd       = Number(stats.kd_ratio ?? 0)
+  const premiers    = rankHistory.filter(r => r.tipo_ranking === 'PREMIERE')
+  const maps        = rankHistory.filter(r => r.tipo_ranking === 'MAPA')
+  const avatarUrl   = steamProfile?.avatarfull ?? steamProfile?.avatarmedium ?? null
+  const name        = stats.nombre_usuario_steam
+  const played      = Number(stats.total_partidas_jugadas ?? 0)
+  const won         = Number(stats.total_partidas_ganadas ?? 0)
+  const kills       = Number(stats.kills ?? 0)
+  const kd          = Number(stats.kd_ratio ?? 0)
   const hoursPlayed = stats.tiempo_jugado ? Math.round(Number(stats.tiempo_jugado) / 60) : null
 
   return (
@@ -199,27 +255,19 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId }: {
                     borderRadius:8, padding:16, marginBottom:12 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
           <div style={{ width:64, height:64, borderRadius:6, overflow:'hidden', flexShrink:0,
-                        background:'var(--bg-border)', position:'relative' }}>
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={name} width={64} height={64}
-                   style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-            ) : (
-              <div style={{ width:64, height:64, display:'flex', alignItems:'center',
-                             justifyContent:'center', fontSize:28, background:'var(--bg-border)' }}>
-                🎮
-              </div>
-            )}
+                        background:'var(--bg-border)' }}>
+            {avatarUrl
+              ? <img src={avatarUrl} alt={name} width={64} height={64} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              : <div style={{ width:64, height:64, display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, background:'var(--bg-border)' }}>🎮</div>
+            }
           </div>
           <div style={{ minWidth:0 }}>
             <div style={{ fontFamily:'Rajdhani,sans-serif', fontSize:16, fontWeight:700,
-                           color:'var(--t1)', overflow:'hidden', textOverflow:'ellipsis',
-                           whiteSpace:'nowrap' }}>
+                           color:'var(--t1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {name}
             </div>
             {stats.region_geografica && (
-              <div style={{ fontSize:11, color:'var(--t3)', marginTop:2 }}>
-                📍 {stats.region_geografica}
-              </div>
+              <div style={{ fontSize:11, color:'var(--t3)', marginTop:2 }}>📍 {stats.region_geografica}</div>
             )}
             <a href={`https://steamcommunity.com/profiles/${steamId}`}
                target="_blank" rel="noopener noreferrer"
@@ -230,7 +278,8 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId }: {
           </div>
         </div>
 
-        {/* Mini stats */}
+        {/* CS2 mini stats */}
+        <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>CS2</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
           {[
             { label:'MATCHES', value: played.toLocaleString('en-US') },
@@ -249,12 +298,39 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId }: {
         </div>
       </div>
 
+      {/* CS:GO Legacy stats */}
+      {csgoStats && (
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                      borderRadius:8, padding:12, marginBottom:12 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>
+            CS:GO LEGACY
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+            {[
+              { label:'KILLS',  value: csgoStats.kills.toLocaleString('en-US') },
+              { label:'K/D',    value: csgoStats.kd.toFixed(2) },
+              { label:'HS%',    value: `${csgoStats.hsRatio}%` },
+              { label:'HOURS',  value: csgoStats.tiempo.toLocaleString('en-US') },
+            ].map(s => (
+              <div key={s.label} style={{ background:'#0d0e13', borderRadius:6, padding:'6px 8px' }}>
+                <div style={{ fontSize:9, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:1 }}>{s.label}</div>
+                <div style={{ fontSize:13, fontFamily:'IBM Plex Mono,monospace', fontWeight:600, color:'#818cf8' }}>
+                  {s.value}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:10, color:'var(--t3)', marginTop:8, lineHeight:1.4 }}>
+            Stats acumuladas CS:GO + CS2 (Steam API)
+          </div>
+        </div>
+      )}
+
       {/* Premier */}
       {premiers.length > 0 && (
         <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
                       borderRadius:8, padding:12, marginBottom:8 }}>
-          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)',
-                        marginBottom:8 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>
             CS2 PREMIER
           </div>
           {premiers.slice(0,3).map((r, i) => {
@@ -262,15 +338,11 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId }: {
             return (
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
                                      padding:'6px 0', borderBottom: i < premiers.length-1 ? '1px solid #191c28' : 'none' }}>
-                <span style={{ fontSize:11, background:bg, color, padding:'2px 7px',
-                                borderRadius:4, fontWeight:700 }}>
+                <span style={{ fontSize:11, background:bg, color, padding:'2px 7px', borderRadius:4, fontWeight:700 }}>
                   {r.tier ?? 'PREMIER'}
                 </span>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:14, fontWeight:700, color:'var(--orange)',
-                                 fontFamily:'IBM Plex Mono,monospace' }}>
-                    {Number(r.puntos_elo).toLocaleString('en-US')}
-                  </div>
+                <div style={{ fontSize:14, fontWeight:700, color:'var(--orange)', fontFamily:'IBM Plex Mono,monospace' }}>
+                  {Number(r.puntos_elo).toLocaleString('en-US')}
                 </div>
               </div>
             )
@@ -282,17 +354,14 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId }: {
       {maps.length > 0 && (
         <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
                       borderRadius:8, padding:12 }}>
-          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)',
-                        marginBottom:8 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>
             CS2 COMPETITIVE
           </div>
           {maps.slice(0,6).map((r, i) => (
             <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
                                    padding:'5px 0', borderBottom: i < maps.length-1 ? '1px solid #191c28' : 'none' }}>
               <span style={{ fontSize:11, color:'var(--t2)' }}>{r.nombre_mapa ?? 'Map'}</span>
-              <span style={{ fontSize:11, color:'var(--t1)', fontFamily:'IBM Plex Mono,monospace' }}>
-                {r.tier}
-              </span>
+              <span style={{ fontSize:11, color:'var(--t1)', fontFamily:'IBM Plex Mono,monospace' }}>{r.tier}</span>
             </div>
           ))}
         </div>

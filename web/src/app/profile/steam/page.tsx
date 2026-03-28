@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useSession, signIn } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
+
+const NEXTAUTH_URL = 'https://fragify.miniserver.online'
 
 const S = {
   card:  { background:'var(--bg-card)', border:'1px solid var(--bg-border)', borderRadius:12, padding:24, marginBottom:20 },
@@ -13,20 +15,36 @@ const S = {
   hint:  { color:'var(--t3)', fontSize:12, marginTop:8, lineHeight:1.6 },
 }
 
+function buildSteamOpenIDUrl() {
+  const params = new URLSearchParams({
+    'openid.ns':         'http://specs.openid.net/auth/2.0',
+    'openid.mode':       'checkid_setup',
+    'openid.return_to':  `${NEXTAUTH_URL}/api/auth/steam/callback`,
+    'openid.realm':      NEXTAUTH_URL,
+    'openid.identity':   'http://specs.openid.net/auth/2.0/identifier_select',
+    'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
+  })
+  return `https://steamcommunity.com/openid/login?${params.toString()}`
+}
+
 export default function SteamPage() {
   const { data: session } = useSession()
   const user = session?.user as any
 
-  const [steamData, setSteamData]   = useState<any>(null)
-  const [codes, setCodes]           = useState({ cs2: '', csgo: '' })
-  const [saving, setSaving]         = useState(false)
-  const [msg, setMsg]               = useState<{ type:'ok'|'err', text:string } | null>(null)
+  const [steamData, setSteamData] = useState<any>(null)
+  const [loading,   setLoading]   = useState(true)
+  const [codes,     setCodes]     = useState({ cs2: '', csgo: '' })
+  const [saving,    setSaving]    = useState(false)
+  const [msg,       setMsg]       = useState<{ type:'ok'|'err', text:string } | null>(null)
 
   useEffect(() => {
-    fetch('/api/profile/steam').then(r => r.json()).then(d => {
-      setSteamData(d)
-      setCodes({ cs2: d.sharecode_cs2 ?? '', csgo: d.sharecode_csgo ?? '' })
-    })
+    fetch('/api/profile/steam')
+      .then(r => r.json())
+      .then(d => {
+        setSteamData(d)
+        setCodes({ cs2: d.sharecode_cs2 ?? '', csgo: d.sharecode_csgo ?? '' })
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function saveCodes() {
@@ -42,7 +60,14 @@ export default function SteamPage() {
     else setMsg({ type:'ok', text:'Sharecodes saved!' })
   }
 
-  const isLinked = steamData?.steam_linked === 1 || !!steamData?.steam_id64
+  function handleLinkSteam() {
+    window.location.href = buildSteamOpenIDUrl()
+  }
+
+  // Determinar si Steam está vinculado leyendo de BD (no de sesión, que puede estar desactualizada)
+  const isLinked = loading
+    ? !!user?.steamId  // fallback a sesión mientras carga
+    : (steamData?.steam_linked === 1 || !!steamData?.steam_id64)
 
   return (
     <div>
@@ -51,33 +76,31 @@ export default function SteamPage() {
       {/* Steam Link */}
       <div style={S.card}>
         <div style={S.title}>STEAM ACCOUNT</div>
-        {isLinked ? (
+        {loading ? (
+          <div style={{ color:'var(--t3)', fontSize:13 }}>Loading...</div>
+        ) : isLinked ? (
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-              <div style={{ width:10, height:10, borderRadius:'50%', background:'var(--green)' }} />
-              <span style={{ fontSize:13, color:'var(--t1)', fontWeight:500 }}>
-                Steam account linked
-              </span>
+              <div style={{ width:10, height:10, borderRadius:'50%', background:'#22c55e' }} />
+              <span style={{ fontSize:13, color:'var(--t1)', fontWeight:500 }}>Steam account linked</span>
             </div>
             <div style={{ fontSize:13, color:'var(--t2)', marginBottom:8 }}>
-              Steam ID: <span style={{ color:'var(--t1)', fontFamily:'monospace' }}>{steamData?.steam_id64}</span>
+              Steam ID: <span style={{ color:'var(--t1)', fontFamily:'monospace' }}>{steamData?.steam_id64 ?? user?.steamId}</span>
             </div>
-            {steamData?.avatar_url && (
-              <img src={steamData.avatar_url} alt="steam avatar"
+            {(steamData?.avatar_url || user?.image) && (
+              <img src={steamData?.avatar_url ?? user?.image} alt="steam avatar"
                 style={{ width:48, height:48, borderRadius:'50%', border:'2px solid var(--bg-border)', marginBottom:12 }} />
             )}
-            <p style={S.hint}>Your profile avatar is now synced from Steam. To use a custom avatar, unlink your Steam account from Settings.</p>
+            <p style={S.hint}>Your profile avatar is synced from Steam. To use a custom avatar, unlink your Steam account from Settings.</p>
           </div>
         ) : (
           <div>
             <p style={{ color:'var(--t2)', fontSize:13, marginBottom:16 }}>
               Link your Steam account to view your CS2 stats and use your Steam avatar.
-              Once linked, your Steam avatar will replace your profile picture.
             </p>
-            <button
-              onClick={() => signIn('steam', { callbackUrl: '/profile/steam' })}
-              style={{ ...S.btn, background:'#1b2838', border:'1px solid #2a475e', color:'#c6d4df', display:'flex', alignItems:'center', gap:10 }}
-            >
+            <button onClick={handleLinkSteam}
+              style={{ ...S.btn, background:'#1b2838', border:'1px solid #2a475e', color:'#c6d4df',
+                       display:'flex', alignItems:'center', gap:10 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#c6d4df">
                 <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.718L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.606 0 11.979 0z"/>
               </svg>
@@ -100,22 +123,16 @@ export default function SteamPage() {
         <div style={{ display:'grid', gap:16 }}>
           <div>
             <label style={S.label}>CS2 Sharecode</label>
-            <input
-              value={codes.cs2}
-              onChange={e => setCodes(c => ({ ...c, cs2: e.target.value }))}
-              style={S.input}
-              placeholder="CSGO-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+            <input value={codes.cs2} onChange={e => setCodes(c => ({ ...c, cs2: e.target.value }))}
+              style={S.input} placeholder="CSGO-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
               onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
               onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
             />
           </div>
           <div>
             <label style={S.label}>CS:GO Sharecode <span style={{ color:'var(--t3)' }}>(optional)</span></label>
-            <input
-              value={codes.csgo}
-              onChange={e => setCodes(c => ({ ...c, csgo: e.target.value }))}
-              style={S.input}
-              placeholder="CSGO-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+            <input value={codes.csgo} onChange={e => setCodes(c => ({ ...c, csgo: e.target.value }))}
+              style={S.input} placeholder="CSGO-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
               onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
               onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
             />

@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 
-type Tab = 'STATS' | 'GRAPHS' | 'MAPS' | 'MATCHES'
+type Tab = 'STATS' | 'GRAPHS' | 'MAPS' | 'MATCHES' | 'CSGO'
 
 const n = (v: any, decimals = 0) => {
   const num = Number(v ?? 0)
@@ -9,13 +9,14 @@ const n = (v: any, decimals = 0) => {
 }
 const fmt = (v: any) => Number(v ?? 0).toLocaleString('en-US')
 
-function CircleGauge({ value, label, max = 2, color = '#f97316' }: {
-  value: number; label: string; max?: number; color?: string
+function CircleGauge({ value, label, max = 2, color = '#f97316', decimals = 0 }: {
+  value: number; label: string; max?: number; color?: string; decimals?: number
 }) {
   const size = 120, r = (size - 10) / 2
   const circ = 2 * Math.PI * r
   const pct  = Math.min(value / max, 1)
   const dash = circ * pct
+  const display = decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString()
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
       <div style={{ fontSize:10, letterSpacing:'0.1em', color:'var(--t3)', fontWeight:500 }}>{label}</div>
@@ -26,8 +27,8 @@ function CircleGauge({ value, label, max = 2, color = '#f97316' }: {
                   strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
         </svg>
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <span style={{ fontFamily:'Rajdhani,sans-serif', fontSize:24, fontWeight:700, color:'var(--t1)' }}>
-            {value}
+          <span style={{ fontFamily:'Rajdhani,sans-serif', fontSize:22, fontWeight:700, color:'var(--t1)' }}>
+            {display}
           </span>
         </div>
       </div>
@@ -54,7 +55,8 @@ function WinCircle({ pct }: { pct: number }) {
   )
 }
 
-export function PlayerTabs({ data }: { data: any }) {
+export function PlayerTabs({ data, csgoStats }: { data: any; csgoStats: any }) {
+  const tabs: Tab[] = csgoStats ? ['STATS','GRAPHS','MAPS','MATCHES','CSGO'] : ['STATS','GRAPHS','MAPS','MATCHES']
   const [tab, setTab] = useState<Tab>('STATS')
   const { stats, ranking, matches, maps, elo } = data
 
@@ -73,15 +75,15 @@ export function PlayerTabs({ data }: { data: any }) {
 
       {/* Tabs — scroll horizontal en móvil */}
       <div style={{ display:'flex', borderBottom:'1px solid var(--bg-border)', padding:'0 8px', overflowX:'auto' }}>
-        {(['STATS','GRAPHS','MAPS','MATCHES'] as Tab[]).map(t => (
+        {tabs.map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding:'9px 14px', fontSize:12, fontWeight:600, letterSpacing:'0.06em',
             color: tab === t ? 'var(--t1)' : 'var(--t2)',
-            borderBottom: tab === t ? '2px solid var(--orange)' : '2px solid transparent',
+            borderBottom: tab === t ? `2px solid ${t === 'CSGO' ? '#818cf8' : 'var(--orange)'}` : '2px solid transparent',
             background:'none', border:'none',
             cursor:'pointer', transition:'color 0.15s', whiteSpace:'nowrap',
           }}>
-            {t}
+            {t === 'CSGO' ? 'CS:GO' : t}
           </button>
         ))}
       </div>
@@ -91,41 +93,34 @@ export function PlayerTabs({ data }: { data: any }) {
         {tab === 'GRAPHS'  && <GraphsTab  elo={elo} />}
         {tab === 'MAPS'    && <MapsTab    maps={maps} />}
         {tab === 'MATCHES' && <MatchesTab matches={matches} />}
+        {tab === 'CSGO'    && <CsgoTab    csgoStats={csgoStats} cs2Stats={stats} />}
       </div>
     </div>
   )
 }
 
 function StatsTab({ stats, ranking, matches, maps }: any) {
-  const recent   = (matches ?? []).slice(0, 20)
-  const played   = n(stats.total_partidas_jugadas)
-  const won      = n(stats.total_partidas_ganadas)
-  const kills    = n(stats.kills)
-  const deaths   = n(stats.deaths)
-  const kd       = n(stats.kd_ratio, 2)
-  const winRate  = played > 0 ? Math.round((won / played) * 100) : n(stats.porcentaje_victorias)
-  const hs       = n(stats.ratio_headshots)
-  const adr      = n(stats.dano_promedio_ronda, 1)
+  const recent  = (matches ?? []).slice(0, 20)
+  const played  = n(stats.total_partidas_jugadas)
+  const won     = n(stats.total_partidas_ganadas)
+  const kills   = n(stats.kills)
+  const deaths  = n(stats.deaths)
+  const kd      = n(stats.kd_ratio, 2)
+  // Win rate calculado desde BD, no estimado
+  const winRate = played > 0 ? Math.round((won / played) * 100) : 0
+  const hs      = n(stats.ratio_headshots)
+  const adr     = n(stats.dano_promedio_ronda, 1)
 
   return (
     <div>
-      {/* Gauges — 2 col en móvil, 4 en desktop */}
-      <div style={{
-        display:'grid',
-        gridTemplateColumns:'repeat(2, 1fr)',
-        gap:12,
-        marginBottom:12,
-      }}>
-        <style>{`
-          @media (min-width: 640px) {
-            .gauges-grid { grid-template-columns: repeat(4, 1fr) !important; }
-          }
-        `}</style>
+      {/* Gauges — 2 col móvil, 4 desktop */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:12 }}>
+        <style>{`@media(min-width:640px){.gauges-grid{grid-template-columns:repeat(4,1fr)!important}}`}</style>
         {[
-          { value: kd,      label:'K/D',      max:2,   color:'#f97316' },
-          { value: winRate, label:'WIN RATE',  max:100, color:'#22c55e' },
-          { value: hs,      label:'HS%',       max:100, color:'#3b82f6' },
-          { value: n(adr),  label:'ADR',       max:200, color:'#eab308' },
+          { value: kd,      label:'K/D',      max:2,   color:'#f97316', decimals:2 },
+          { value: winRate, label:'WIN RATE',  max:100, color:'#22c55e', decimals:0 },
+          { value: hs,      label:'HS%',       max:100, color:'#3b82f6', decimals:0 },
+          { value: n(adr),  label:'ADR',       max:200, color:'#eab308', decimals:0 },
         ].map(g => (
           <div key={g.label} style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8,
                                        padding:16, display:'flex', justifyContent:'center' }}>
@@ -182,7 +177,7 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
         )}
       </div>
 
-      {/* Recent W/L dots */}
+      {/* Recent W/L */}
       <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16, marginBottom:12 }}>
         <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>RECENT MATCHES</div>
         <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
@@ -205,23 +200,17 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
         </div>
       </div>
 
-      {/* Most played / Best WR — apilados en móvil */}
+      {/* Most played / Best WR */}
       {maps && maps.length > 0 && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:12 }}>
-          <style>{`
-            @media (min-width: 640px) {
-              .maps-grid { grid-template-columns: 1fr 1fr !important; }
-            }
-          `}</style>
+          <style>{`@media(min-width:640px){.maps-grid{grid-template-columns:1fr 1fr!important}}`}</style>
           <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
             <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>MOST PLAYED</div>
             {maps.slice(0,4).map((m: any, i: number) => (
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
                                      padding:'5px 0', borderBottom:'1px solid #191c28' }}>
                 <span style={{ color:'var(--t2)', fontSize:12 }}>{m.mapa}</span>
-                <span style={{ color:'var(--t1)', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>
-                  {m.total_partidas_mapa}
-                </span>
+                <span style={{ color:'var(--t1)', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>{m.total_partidas_mapa}</span>
               </div>
             ))}
           </div>
@@ -231,9 +220,7 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
                                      padding:'5px 0', borderBottom:'1px solid #191c28' }}>
                 <span style={{ color:'var(--t2)', fontSize:12 }}>{m.mapa}</span>
-                <span style={{ color:'#22c55e', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>
-                  {m.tasa_victoria_mapa}%
-                </span>
+                <span style={{ color:'#22c55e', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>{m.tasa_victoria_mapa}%</span>
               </div>
             ))}
           </div>
@@ -245,7 +232,13 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
 
 function GraphsTab({ elo }: any) {
   if (!elo || elo.length === 0) {
-    return <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>No ELO history yet.</div>
+    return (
+      <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
+        <div style={{ fontSize:32, marginBottom:12 }}>📈</div>
+        <div style={{ fontSize:14, marginBottom:8 }}>No ELO history yet</div>
+        <div style={{ fontSize:12 }}>ELO history appears after Premier matches are tracked</div>
+      </div>
+    )
   }
 
   const w = 760, h = 260, padX = 40, padY = 20
@@ -298,14 +291,20 @@ function GraphsTab({ elo }: any) {
 
 function MapsTab({ maps }: any) {
   if (!maps || maps.length === 0) {
-    return <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>No map data yet.</div>
+    return (
+      <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
+        <div style={{ fontSize:32, marginBottom:12 }}>🗺️</div>
+        <div style={{ fontSize:14, marginBottom:8 }}>No map data yet</div>
+        <div style={{ fontSize:12 }}>Map stats appear after matches are imported</div>
+      </div>
+    )
   }
   return (
     <div style={{ overflowX:'auto' }}>
       <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:340 }}>
         <thead>
           <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
-            {['Map','WR%','Played','Win Rate Bar'].map(h => (
+            {['Map','WR%','Played','Win Rate'].map(h => (
               <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:10,
                                     textTransform:'uppercase', letterSpacing:'0.08em',
                                     color:'var(--t3)', fontWeight:500, whiteSpace:'nowrap' }}>
@@ -345,7 +344,13 @@ function MapsTab({ maps }: any) {
 
 function MatchesTab({ matches }: any) {
   if (!matches || matches.length === 0) {
-    return <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>No matches yet.</div>
+    return (
+      <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
+        <div style={{ fontSize:32, marginBottom:12 }}>🎮</div>
+        <div style={{ fontSize:14, marginBottom:8 }}>No matches yet</div>
+        <div style={{ fontSize:12 }}>Match history appears after sharecodes are imported</div>
+      </div>
+    )
   }
   return (
     <div style={{ overflowX:'auto' }}>
@@ -398,6 +403,119 @@ function MatchesTab({ matches }: any) {
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function CsgoTab({ csgoStats, cs2Stats }: any) {
+  if (!csgoStats) {
+    return (
+      <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
+        <div style={{ fontSize:32, marginBottom:12 }}>🔒</div>
+        <div style={{ fontSize:14, marginBottom:8 }}>CS:GO stats not available</div>
+        <div style={{ fontSize:12 }}>This player's game stats are private or they have no CS:GO history</div>
+      </div>
+    )
+  }
+
+  const cs2Kills = Number(cs2Stats?.kills ?? 0)
+  const cs2KD    = Number(cs2Stats?.kd_ratio ?? 0)
+  const cs2HS    = Number(cs2Stats?.ratio_headshots ?? 0)
+
+  return (
+    <div>
+      {/* Aviso */}
+      <div style={{ background:'rgba(129,140,248,0.08)', border:'1px solid rgba(129,140,248,0.2)',
+                    borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#818cf8' }}>
+        ℹ️ CS:GO stats shown are <strong>lifetime accumulated</strong> from Steam API (CS:GO + CS2 combined). 
+        They are shown as a historical reference only.
+      </div>
+
+      {/* Stats globales CS:GO */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:16 }}>
+        <style>{`@media(min-width:480px){.csgo-grid{grid-template-columns:repeat(4,1fr)!important}}`}</style>
+        {[
+          { label:'TOTAL KILLS',   value: csgoStats.kills.toLocaleString('en-US'),   color:'#818cf8' },
+          { label:'K/D RATIO',     value: csgoStats.kd.toFixed(2),                   color:'#818cf8' },
+          { label:'HEADSHOT %',    value: `${csgoStats.hsRatio}%`,                   color:'#818cf8' },
+          { label:'HOURS PLAYED',  value: csgoStats.tiempo.toLocaleString('en-US'),  color:'#818cf8' },
+          { label:'TOTAL WINS',    value: csgoStats.wins.toLocaleString('en-US'),     color:'#818cf8' },
+          { label:'EST. MATCHES',  value: csgoStats.matches.toLocaleString('en-US'), color:'#818cf8' },
+          { label:'TOTAL MVPs',    value: csgoStats.mvps.toLocaleString('en-US'),     color:'#818cf8' },
+          { label:'ROUNDS PLAYED', value: csgoStats.rounds.toLocaleString('en-US'),  color:'#818cf8' },
+        ].map(s => (
+          <div key={s.label} style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:'14px 16px' }}>
+            <div style={{ fontSize:9, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:6 }}>{s.label}</div>
+            <div style={{ fontSize:20, fontFamily:'IBM Plex Mono,monospace', fontWeight:700, color:s.color }}>
+              {s.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Comparativa CS:GO vs CS2 */}
+      {cs2Kills > 0 && (
+        <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
+          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:16 }}>
+            CS:GO vs CS2 COMPARISON
+          </div>
+          <div style={{ display:'grid', gap:12 }}>
+            {[
+              {
+                label: 'KILLS',
+                csgo:  csgoStats.kills,
+                cs2:   cs2Kills,
+                format: (v: number) => v.toLocaleString('en-US'),
+              },
+              {
+                label: 'K/D RATIO',
+                csgo:  csgoStats.kd,
+                cs2:   cs2KD,
+                format: (v: number) => v.toFixed(2),
+                higher: true,
+              },
+              {
+                label: 'HEADSHOT %',
+                csgo:  csgoStats.hsRatio,
+                cs2:   cs2HS,
+                format: (v: number) => `${Math.round(v)}%`,
+                higher: true,
+              },
+            ].map(row => {
+              const csgoVal = row.csgo
+              const cs2Val  = row.cs2
+              const total   = csgoVal + cs2Val || 1
+              const csgoPct = Math.round((csgoVal / total) * 100)
+              const cs2Pct  = 100 - csgoPct
+              const cs2Better = row.higher ? cs2Val > csgoVal : false
+              return (
+                <div key={row.label}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6, fontSize:11 }}>
+                    <span style={{ color:'var(--t3)', letterSpacing:'0.08em' }}>{row.label}</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:12, fontFamily:'IBM Plex Mono,monospace', color:'#818cf8', minWidth:60, textAlign:'right' }}>
+                      {row.format(csgoVal)}
+                    </span>
+                    <div style={{ flex:1, display:'flex', height:8, borderRadius:4, overflow:'hidden' }}>
+                      <div style={{ width:`${csgoPct}%`, background:'#818cf8', transition:'width 0.4s' }} />
+                      <div style={{ width:`${cs2Pct}%`, background:'var(--orange)', transition:'width 0.4s' }} />
+                    </div>
+                    <span style={{ fontSize:12, fontFamily:'IBM Plex Mono,monospace', color:'var(--orange)', minWidth:60 }}>
+                      {row.format(cs2Val)}
+                      {cs2Better && <span style={{ color:'#22c55e', marginLeft:4 }}>↑</span>}
+                    </span>
+                  </div>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'var(--t3)', marginTop:3 }}>
+                    <span style={{ color:'#818cf8' }}>CS:GO</span>
+                    <span style={{ color:'var(--orange)' }}>CS2</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
