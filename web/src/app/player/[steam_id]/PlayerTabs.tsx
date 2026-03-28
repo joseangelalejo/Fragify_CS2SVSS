@@ -12,7 +12,7 @@ const fmt = (v: any) => Number(v ?? 0).toLocaleString('en-US')
 function CircleGauge({ value, label, max = 2, color = '#f97316' }: {
   value: number; label: string; max?: number; color?: string
 }) {
-  const size = 130, r = (size - 10) / 2
+  const size = 120, r = (size - 10) / 2
   const circ = 2 * Math.PI * r
   const pct  = Math.min(value / max, 1)
   const dash = circ * pct
@@ -26,7 +26,7 @@ function CircleGauge({ value, label, max = 2, color = '#f97316' }: {
                   strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
         </svg>
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <span style={{ fontFamily:'Rajdhani,sans-serif', fontSize:28, fontWeight:700, color:'var(--t1)' }}>
+          <span style={{ fontFamily:'Rajdhani,sans-serif', fontSize:24, fontWeight:700, color:'var(--t1)' }}>
             {value}
           </span>
         </div>
@@ -71,11 +71,11 @@ export function PlayerTabs({ data }: { data: any }) {
         ))}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:'flex', borderBottom:'1px solid var(--bg-border)', padding:'0 16px' }}>
+      {/* Tabs — scroll horizontal en móvil */}
+      <div style={{ display:'flex', borderBottom:'1px solid var(--bg-border)', padding:'0 8px', overflowX:'auto' }}>
         {(['STATS','GRAPHS','MAPS','MATCHES'] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
-            padding:'9px 16px', fontSize:12, fontWeight:600, letterSpacing:'0.06em',
+            padding:'9px 14px', fontSize:12, fontWeight:600, letterSpacing:'0.06em',
             color: tab === t ? 'var(--t1)' : 'var(--t2)',
             borderBottom: tab === t ? '2px solid var(--orange)' : '2px solid transparent',
             background:'none', border:'none',
@@ -86,7 +86,7 @@ export function PlayerTabs({ data }: { data: any }) {
         ))}
       </div>
 
-      <div style={{ padding:20 }}>
+      <div style={{ padding:16 }}>
         {tab === 'STATS'   && <StatsTab   stats={stats} ranking={ranking} matches={matches} maps={maps} />}
         {tab === 'GRAPHS'  && <GraphsTab  elo={elo} />}
         {tab === 'MAPS'    && <MapsTab    maps={maps} />}
@@ -108,23 +108,35 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
   const adr      = n(stats.dano_promedio_ronda, 1)
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16 }}>
-      {/* 4 gauges */}
-      {[
-        { value: kd,      label:'K/D',      max:2,   color:'#f97316' },
-        { value: winRate, label:'WIN RATE',  max:100, color:'#22c55e' },
-        { value: hs,      label:'HS%',       max:100, color:'#3b82f6' },
-        { value: n(adr),  label:'ADR',       max:200, color:'#eab308' },
-      ].map(g => (
-        <div key={g.label} style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8,
-                                     padding:20, display:'flex', justifyContent:'center' }}>
-          <CircleGauge {...g} />
-        </div>
-      ))}
+    <div>
+      {/* Gauges — 2 col en móvil, 4 en desktop */}
+      <div style={{
+        display:'grid',
+        gridTemplateColumns:'repeat(2, 1fr)',
+        gap:12,
+        marginBottom:12,
+      }}>
+        <style>{`
+          @media (min-width: 640px) {
+            .gauges-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          }
+        `}</style>
+        {[
+          { value: kd,      label:'K/D',      max:2,   color:'#f97316' },
+          { value: winRate, label:'WIN RATE',  max:100, color:'#22c55e' },
+          { value: hs,      label:'HS%',       max:100, color:'#3b82f6' },
+          { value: n(adr),  label:'ADR',       max:200, color:'#eab308' },
+        ].map(g => (
+          <div key={g.label} style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8,
+                                       padding:16, display:'flex', justifyContent:'center' }}>
+            <CircleGauge {...g} />
+          </div>
+        ))}
+      </div>
 
       {/* Stats numéricos */}
-      <div style={{ gridColumn:'1/3', background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:20 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }}>
+      <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16, marginBottom:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:0 }}>
           {[
             ['PLAYED', fmt(played)],
             ['WON',    fmt(won)],
@@ -133,7 +145,7 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
           ].map(([l, v]) => (
             <div key={l} style={{ textAlign:'center', padding:'8px 0' }}>
               <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.08em', marginBottom:4 }}>{l}</div>
-              <div style={{ fontSize:18, fontFamily:'IBM Plex Mono,monospace', fontWeight:600 }}>{v}</div>
+              <div style={{ fontSize:16, fontFamily:'IBM Plex Mono,monospace', fontWeight:600 }}>{v}</div>
             </div>
           ))}
         </div>
@@ -146,18 +158,18 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
           ].map(([l, v]) => (
             <div key={l} style={{ textAlign:'center' }}>
               <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.08em' }}>{l}</div>
-              <div style={{ fontSize:20, fontFamily:'Rajdhani,sans-serif', fontWeight:700, marginTop:2 }}>{v}</div>
+              <div style={{ fontSize:18, fontFamily:'Rajdhani,sans-serif', fontWeight:700, marginTop:2 }}>{v}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Premier rank */}
-      <div style={{ gridColumn:'3/5', background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:20 }}>
+      <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16, marginBottom:12 }}>
         {ranking ? (
           <>
             <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:8 }}>PREMIER RANK</div>
-            <div style={{ fontFamily:'Rajdhani,sans-serif', fontSize:40, fontWeight:700, color:'var(--orange)', lineHeight:1 }}>
+            <div style={{ fontFamily:'Rajdhani,sans-serif', fontSize:36, fontWeight:700, color:'var(--orange)', lineHeight:1 }}>
               {Number(ranking.puntos_elo).toLocaleString('en-US')}
             </div>
             <div style={{ fontSize:13, color:'var(--t2)', marginTop:4 }}>{ranking.tier}</div>
@@ -171,7 +183,7 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
       </div>
 
       {/* Recent W/L dots */}
-      <div style={{ gridColumn:'1/5', background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
+      <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16, marginBottom:12 }}>
         <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>RECENT MATCHES</div>
         <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
           {recent.length === 0
@@ -193,33 +205,40 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
         </div>
       </div>
 
-      {/* Most played / Most success */}
-      {maps && maps.length > 0 && (<>
-        <div style={{ gridColumn:'1/3', background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
-          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>MOST PLAYED</div>
-          {maps.slice(0,4).map((m: any, i: number) => (
-            <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-                                   padding:'5px 0', borderBottom:'1px solid #191c28' }}>
-              <span style={{ color:'var(--t2)', fontSize:12 }}>{m.mapa}</span>
-              <span style={{ color:'var(--t1)', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>
-                {m.total_partidas_mapa}
-              </span>
-            </div>
-          ))}
+      {/* Most played / Best WR — apilados en móvil */}
+      {maps && maps.length > 0 && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:12 }}>
+          <style>{`
+            @media (min-width: 640px) {
+              .maps-grid { grid-template-columns: 1fr 1fr !important; }
+            }
+          `}</style>
+          <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
+            <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>MOST PLAYED</div>
+            {maps.slice(0,4).map((m: any, i: number) => (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                                     padding:'5px 0', borderBottom:'1px solid #191c28' }}>
+                <span style={{ color:'var(--t2)', fontSize:12 }}>{m.mapa}</span>
+                <span style={{ color:'var(--t1)', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>
+                  {m.total_partidas_mapa}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
+            <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>BEST WIN RATE</div>
+            {[...maps].sort((a,b) => b.tasa_victoria_mapa - a.tasa_victoria_mapa).slice(0,4).map((m: any, i: number) => (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                                     padding:'5px 0', borderBottom:'1px solid #191c28' }}>
+                <span style={{ color:'var(--t2)', fontSize:12 }}>{m.mapa}</span>
+                <span style={{ color:'#22c55e', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>
+                  {m.tasa_victoria_mapa}%
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ gridColumn:'3/5', background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
-          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>BEST WIN RATE</div>
-          {[...maps].sort((a,b) => b.tasa_victoria_mapa - a.tasa_victoria_mapa).slice(0,4).map((m: any, i: number) => (
-            <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-                                   padding:'5px 0', borderBottom:'1px solid #191c28' }}>
-              <span style={{ color:'var(--t2)', fontSize:12 }}>{m.mapa}</span>
-              <span style={{ color:'#22c55e', fontSize:12, fontFamily:'IBM Plex Mono,monospace' }}>
-                {m.tasa_victoria_mapa}%
-              </span>
-            </div>
-          ))}
-        </div>
-      </>)}
+      )}
     </div>
   )
 }
@@ -243,7 +262,7 @@ function GraphsTab({ elo }: any) {
 
   return (
     <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16, overflowX:'auto' }}>
-      <svg viewBox={`0 0 ${w} ${h}`} style={{ width:'100%', minWidth:400 }}>
+      <svg viewBox={`0 0 ${w} ${h}`} style={{ width:'100%', minWidth:300 }}>
         <defs>
           <linearGradient id="eloGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#818cf8" stopOpacity="0.3" />
@@ -282,43 +301,45 @@ function MapsTab({ maps }: any) {
     return <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>No map data yet.</div>
   }
   return (
-    <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
-      <thead>
-        <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
-          {['Map','WR%','Played','Win Rate Bar'].map(h => (
-            <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:10,
-                                  textTransform:'uppercase', letterSpacing:'0.08em',
-                                  color:'var(--t3)', fontWeight:500 }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {maps.map((m: any, i: number) => {
-          const wr = Math.round(Number(m.tasa_victoria_mapa ?? 0))
-          return (
-            <tr key={i} style={{ borderBottom:'1px solid #191c28' }}>
-              <td style={{ padding:'10px 12px', fontWeight:600, color:'var(--t1)' }}>{m.mapa}</td>
-              <td style={{ padding:'10px 12px' }}><WinCircle pct={wr} /></td>
-              <td style={{ padding:'10px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12, color:'var(--t2)' }}>
-                {m.total_partidas_mapa}
-              </td>
-              <td style={{ padding:'10px 12px', minWidth:140 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ flex:1, height:5, background:'var(--bg-border)', borderRadius:3 }}>
-                    <div style={{ height:'100%', borderRadius:3,
-                                  background: wr >= 55 ? '#22c55e' : wr >= 45 ? '#eab308' : '#ef4444',
-                                  width:`${wr}%`, transition:'width 0.3s' }} />
+    <div style={{ overflowX:'auto' }}>
+      <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:340 }}>
+        <thead>
+          <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
+            {['Map','WR%','Played','Win Rate Bar'].map(h => (
+              <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:10,
+                                    textTransform:'uppercase', letterSpacing:'0.08em',
+                                    color:'var(--t3)', fontWeight:500, whiteSpace:'nowrap' }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {maps.map((m: any, i: number) => {
+            const wr = Math.round(Number(m.tasa_victoria_mapa ?? 0))
+            return (
+              <tr key={i} style={{ borderBottom:'1px solid #191c28' }}>
+                <td style={{ padding:'10px 12px', fontWeight:600, color:'var(--t1)', whiteSpace:'nowrap' }}>{m.mapa}</td>
+                <td style={{ padding:'10px 12px' }}><WinCircle pct={wr} /></td>
+                <td style={{ padding:'10px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12, color:'var(--t2)' }}>
+                  {m.total_partidas_mapa}
+                </td>
+                <td style={{ padding:'10px 12px', minWidth:120 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ flex:1, height:5, background:'var(--bg-border)', borderRadius:3 }}>
+                      <div style={{ height:'100%', borderRadius:3,
+                                    background: wr >= 55 ? '#22c55e' : wr >= 45 ? '#eab308' : '#ef4444',
+                                    width:`${wr}%`, transition:'width 0.3s' }} />
+                    </div>
+                    <span style={{ fontSize:11, color:'var(--t3)', minWidth:28 }}>{wr}%</span>
                   </div>
-                  <span style={{ fontSize:11, color:'var(--t3)', minWidth:28 }}>{wr}%</span>
-                </div>
-              </td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -327,54 +348,56 @@ function MatchesTab({ matches }: any) {
     return <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>No matches yet.</div>
   }
   return (
-    <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
-      <thead>
-        <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
-          {['Date','Map','Score','Result','K/D/A','HS%','ADR','Min'].map(h => (
-            <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:10,
-                                  textTransform:'uppercase', letterSpacing:'0.08em',
-                                  color:'var(--t3)', fontWeight:500 }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {matches.map((m: any, i: number) => {
-          const isW = m.resultado === 'VICTORIA', isL = m.resultado === 'DERROTA'
-          const hs  = m.kills > 0 ? Math.round((m.headshots / m.kills) * 100) : 0
-          const adr = m.dano_total > 0 ? Math.round(m.dano_total / 24) : 0
-          return (
-            <tr key={i} style={{ borderBottom:'1px solid #191c28' }}>
-              <td style={{ padding:'9px 12px', color:'var(--t3)', fontSize:11 }}>
-                {new Date(m.fecha_partida).toLocaleDateString('en-US', { month:'short', day:'2-digit' })}
-              </td>
-              <td style={{ padding:'9px 12px', fontWeight:500 }}>{m.mapa}</td>
-              <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>
-                {m.resultado_puntuacion ?? '—'}
-              </td>
-              <td style={{ padding:'9px 12px' }}>
-                <span style={{
-                  fontSize:11, fontWeight:700, padding:'2px 7px', borderRadius:4,
-                  background: isW ? 'rgba(34,197,94,0.12)' : isL ? 'rgba(239,68,68,0.12)' : 'rgba(156,163,175,0.1)',
-                  color: isW ? '#22c55e' : isL ? '#ef4444' : '#9ca3af',
-                }}>
-                  {isW ? 'W' : isL ? 'L' : 'T'}
-                </span>
-              </td>
-              <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>
-                {m.kills}/{m.deaths}/{m.assists}
-              </td>
-              <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12,
-                            color: hs >= 50 ? '#22c55e' : 'var(--t2)' }}>
-                {hs}%
-              </td>
-              <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>{adr}</td>
-              <td style={{ padding:'9px 12px', color:'var(--t3)', fontSize:11 }}>{m.duracion_minutos}m</td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
+    <div style={{ overflowX:'auto' }}>
+      <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:480 }}>
+        <thead>
+          <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
+            {['Date','Map','Score','Result','K/D/A','HS%','ADR','Min'].map(h => (
+              <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:10,
+                                    textTransform:'uppercase', letterSpacing:'0.08em',
+                                    color:'var(--t3)', fontWeight:500, whiteSpace:'nowrap' }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {matches.map((m: any, i: number) => {
+            const isW = m.resultado === 'VICTORIA', isL = m.resultado === 'DERROTA'
+            const hs  = m.kills > 0 ? Math.round((m.headshots / m.kills) * 100) : 0
+            const adr = m.dano_total > 0 ? Math.round(m.dano_total / 24) : 0
+            return (
+              <tr key={i} style={{ borderBottom:'1px solid #191c28' }}>
+                <td style={{ padding:'9px 12px', color:'var(--t3)', fontSize:11, whiteSpace:'nowrap' }}>
+                  {new Date(m.fecha_partida).toLocaleDateString('en-US', { month:'short', day:'2-digit' })}
+                </td>
+                <td style={{ padding:'9px 12px', fontWeight:500, whiteSpace:'nowrap' }}>{m.mapa}</td>
+                <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>
+                  {m.resultado_puntuacion ?? '—'}
+                </td>
+                <td style={{ padding:'9px 12px' }}>
+                  <span style={{
+                    fontSize:11, fontWeight:700, padding:'2px 7px', borderRadius:4,
+                    background: isW ? 'rgba(34,197,94,0.12)' : isL ? 'rgba(239,68,68,0.12)' : 'rgba(156,163,175,0.1)',
+                    color: isW ? '#22c55e' : isL ? '#ef4444' : '#9ca3af',
+                  }}>
+                    {isW ? 'W' : isL ? 'L' : 'T'}
+                  </span>
+                </td>
+                <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12, whiteSpace:'nowrap' }}>
+                  {m.kills}/{m.deaths}/{m.assists}
+                </td>
+                <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12,
+                              color: hs >= 50 ? '#22c55e' : 'var(--t2)' }}>
+                  {hs}%
+                </td>
+                <td style={{ padding:'9px 12px', fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>{adr}</td>
+                <td style={{ padding:'9px 12px', color:'var(--t3)', fontSize:11 }}>{m.duracion_minutos}m</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
