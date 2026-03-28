@@ -13,6 +13,7 @@ const S = {
   err:   { background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'#ef4444', marginBottom:12 },
   ok:    { background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'#22c55e', marginBottom:12 },
   hint:  { color:'var(--t3)', fontSize:12, marginTop:8, lineHeight:1.6 },
+  info:  { background:'rgba(129,140,248,0.08)', border:'1px solid rgba(129,140,248,0.2)', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#818cf8', lineHeight:1.6 },
 }
 
 function buildSteamOpenIDUrl() {
@@ -110,16 +111,23 @@ export default function SteamPage() {
   const { data: session } = useSession()
   const user = session?.user as any
 
-  const [steamData, setSteamData] = useState<any>(null)
-  const [loading,   setLoading]   = useState(true)
-  const [codes,     setCodes]     = useState({ cs2: '', csgo: '' })
-  const [saving,    setSaving]    = useState(false)
-  const [msg,       setMsg]       = useState<{ type:'ok'|'err', text:string } | null>(null)
+  const [steamData,  setSteamData]  = useState<any>(null)
+  const [loading,    setLoading]    = useState(true)
+  const [codes,      setCodes]      = useState({ cs2: '', csgo: '' })
+  const [authToken,  setAuthToken]  = useState('')
+  const [saving,     setSaving]     = useState(false)
+  const [importing,  setImporting]  = useState(false)
+  const [msg,        setMsg]        = useState<{ type:'ok'|'err', text:string } | null>(null)
+  const [importMsg,  setImportMsg]  = useState<{ type:'ok'|'err', text:string } | null>(null)
 
   useEffect(() => {
     fetch('/api/profile/steam')
       .then(r => r.json())
-      .then(d => { setSteamData(d); setCodes({ cs2: d.sharecode_cs2 ?? '', csgo: d.sharecode_csgo ?? '' }) })
+      .then(d => {
+        setSteamData(d)
+        setCodes({ cs2: d.sharecode_cs2 ?? '', csgo: d.sharecode_csgo ?? '' })
+        setAuthToken(d.steam_auth_token ?? '')
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -127,20 +135,47 @@ export default function SteamPage() {
     setSaving(true); setMsg(null)
     const res = await fetch('/api/profile/steam', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sharecode_cs2: codes.cs2 || null, sharecode_csgo: codes.csgo || null }),
+      body: JSON.stringify({
+        sharecode_cs2:    codes.cs2    || null,
+        sharecode_csgo:   codes.csgo   || null,
+        steam_auth_token: authToken    || null,
+      }),
     })
     const data = await res.json()
     setSaving(false)
     if (!res.ok) setMsg({ type:'err', text: data.error })
-    else setMsg({ type:'ok', text:'Sharecodes saved!' })
+    else setMsg({ type:'ok', text:'Settings saved!' })
+  }
+
+  async function importMatches() {
+    setImporting(true); setImportMsg(null)
+    const res = await fetch('/api/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}), // usa los datos del usuario de la sesión
+    })
+    const data = await res.json()
+    setImporting(false)
+    if (!res.ok) {
+      setImportMsg({ type:'err', text: data.error ?? 'Import failed' })
+    } else {
+      const msg = data.matchesImported > 0
+        ? `✓ ${data.matchesImported} matches imported successfully!`
+        : data.hasAuthToken
+          ? '✓ Stats updated. No new matches found.'
+          : '✓ Stats updated. Add your auth token below to import match history.'
+      setImportMsg({ type:'ok', text: msg })
+    }
   }
 
   const isLinked = loading ? !!user?.steamId : (steamData?.steam_linked === 1 || !!steamData?.steam_id64)
+  const hasToken = !!authToken
+  const hasCode  = !!codes.cs2
 
   return (
     <div>
       <h2 style={{ fontSize:24, marginBottom:24, fontFamily:'Rajdhani,sans-serif' }}>Steam & CS2</h2>
 
+      {/* Steam Account */}
       <div style={S.card}>
         <div style={S.title}>STEAM ACCOUNT</div>
         {loading ? (
@@ -155,7 +190,7 @@ export default function SteamPage() {
               Steam ID: <span style={{ color:'var(--t1)', fontFamily:'monospace' }}>{steamData?.steam_id64 ?? user?.steamId}</span>
             </div>
             {(steamData?.avatar_url || user?.image) && (
-              <img src={steamData?.avatar_url ?? user?.image} alt="steam avatar"
+              <img src={steamData?.avatar_url ?? user?.image} alt="avatar"
                 style={{ width:48, height:48, borderRadius:'50%', border:'2px solid var(--bg-border)', marginBottom:12 }} />
             )}
             <p style={S.hint}>Your profile avatar is synced from Steam. To use a custom avatar, unlink your Steam account from Settings.</p>
@@ -177,6 +212,7 @@ export default function SteamPage() {
         )}
       </div>
 
+      {/* Match History Sharecodes */}
       <div style={S.card}>
         <div style={S.title}>MATCH HISTORY SHARECODES</div>
         {msg && <div style={msg.type === 'ok' ? S.ok : S.err}>{msg.text}</div>}
@@ -205,10 +241,101 @@ export default function SteamPage() {
         <button onClick={saveCodes} disabled={saving} style={{ ...S.btn, marginTop:16, opacity: saving ? 0.7 : 1 }}>
           {saving ? 'Saving...' : 'Save Sharecodes'}
         </button>
-
         <p style={S.hint}>
           Sharecodes allow Fragify to access your recent match history. Your code is private and only used to fetch your matches.
         </p>
+      </div>
+
+      {/* Auth Token — para importación automática */}
+      <div style={S.card}>
+        <div style={S.title}>MATCH HISTORY AUTH TOKEN</div>
+
+        <div style={{ ...S.info, marginBottom:16 }}>
+          <strong>Optional but recommended.</strong> Your Steam Authentication Code allows Fragify to automatically
+          retrieve all your recent matches in sequence — without it, only basic stats are imported.<br/><br/>
+          Find it at: <a href="https://steamcommunity.com/my/gcpd/730/?tab=authenticationcode"
+            target="_blank" rel="noopener noreferrer"
+            style={{ color:'var(--orange)', fontWeight:600 }}>
+            steamcommunity.com/my/gcpd/730 → Authentication Codes
+          </a>
+          {' '}— copy the code from the <strong>"Access to Your Match History"</strong> row.
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <label style={S.label}>Steam Auth Token</label>
+          <input
+            value={authToken}
+            onChange={e => setAuthToken(e.target.value)}
+            style={S.input}
+            placeholder="e.g. 7KXXXXXXXXXXXXXXXX..."
+            onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+            onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+          />
+          <p style={S.hint}>
+            This token is stored securely and only used to fetch your match history from Steam.
+          </p>
+        </div>
+
+        <button onClick={saveCodes} disabled={saving} style={{ ...S.btn, opacity: saving ? 0.7 : 1 }}>
+          {saving ? 'Saving...' : 'Save Auth Token'}
+        </button>
+      </div>
+
+      {/* Importar partidas */}
+      <div style={S.card}>
+        <div style={S.title}>IMPORT MATCH HISTORY</div>
+        {importMsg && <div style={importMsg.type === 'ok' ? S.ok : S.err}>{importMsg.text}</div>}
+
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {/* Estado de configuración */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            {[
+              { label:'Sharecode',  ok: hasCode,  okText:'Set', noText:'Not set' },
+              { label:'Auth Token', ok: hasToken, okText:'Set', noText:'Not set — basic import only' },
+            ].map(s => (
+              <div key={s.label} style={{ background:'#0d0e13', borderRadius:8, padding:'10px 12px',
+                                          display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ width:8, height:8, borderRadius:'50%',
+                              background: s.ok ? '#22c55e' : '#6b7280', flexShrink:0 }} />
+                <div>
+                  <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.08em' }}>{s.label.toUpperCase()}</div>
+                  <div style={{ fontSize:12, color: s.ok ? 'var(--t1)' : 'var(--t3)' }}>
+                    {s.ok ? s.okText : s.noText}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ fontSize:13, color:'var(--t2)', lineHeight:1.6, margin:0 }}>
+            {hasToken && hasCode
+              ? 'Ready to import. Fragify will retrieve your recent matches from Steam and populate your stats, maps, and graphs.'
+              : hasCode
+              ? 'Basic import available — will update your global stats. Add your auth token above to also import individual match history.'
+              : 'Add your sharecode above to enable match import.'}
+          </p>
+
+          <button
+            onClick={importMatches}
+            disabled={importing || !hasCode}
+            style={{
+              ...S.btn,
+              opacity: (importing || !hasCode) ? 0.5 : 1,
+              cursor: !hasCode ? 'not-allowed' : 'pointer',
+              display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+            }}
+          >
+            {importing ? (
+              <>
+                <span style={{ display:'inline-block', width:14, height:14, border:'2px solid rgba(255,255,255,0.3)',
+                               borderTopColor:'#fff', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+                Importing...
+              </>
+            ) : '⬇️ Import Matches Now'}
+          </button>
+        </div>
+
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     </div>
   )
