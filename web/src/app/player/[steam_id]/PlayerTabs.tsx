@@ -230,14 +230,29 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
   )
 }
 
+const EmptyState = ({ icon, title, desc }: { icon: string; title: string; desc: string }) => (
+  <div style={{ textAlign:'center', padding:'40px 24px', color:'var(--t3)' }}>
+    <div style={{ fontSize:36, marginBottom:16 }}>{icon}</div>
+    <div style={{ fontSize:15, fontWeight:600, color:'var(--t2)', marginBottom:8 }}>{title}</div>
+    <div style={{ fontSize:13, lineHeight:1.6, maxWidth:340, margin:'0 auto 20px' }}>{desc}</div>
+    <a href="/profile/steam" style={{
+      display:'inline-flex', alignItems:'center', gap:8,
+      background:'var(--orange)', color:'#fff', fontWeight:700,
+      fontSize:13, padding:'9px 18px', borderRadius:8, textDecoration:'none',
+    }}>
+      🔗 Import matches via sharecode
+    </a>
+  </div>
+)
+
 function GraphsTab({ elo }: any) {
   if (!elo || elo.length === 0) {
     return (
-      <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
-        <div style={{ fontSize:32, marginBottom:12 }}>📈</div>
-        <div style={{ fontSize:14, marginBottom:8 }}>No ELO history yet</div>
-        <div style={{ fontSize:12 }}>ELO history appears after Premier matches are tracked</div>
-      </div>
+      <EmptyState
+        icon="📈"
+        title="No ELO history yet"
+        desc="ELO progression graphs appear once your Premier matches are imported via sharecode."
+      />
     )
   }
 
@@ -292,11 +307,11 @@ function GraphsTab({ elo }: any) {
 function MapsTab({ maps }: any) {
   if (!maps || maps.length === 0) {
     return (
-      <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
-        <div style={{ fontSize:32, marginBottom:12 }}>🗺️</div>
-        <div style={{ fontSize:14, marginBottom:8 }}>No map data yet</div>
-        <div style={{ fontSize:12 }}>Map stats appear after matches are imported</div>
-      </div>
+      <EmptyState
+        icon="🗺️"
+        title="No map data yet"
+        desc="Map statistics appear once your match history is imported via sharecode."
+      />
     )
   }
   return (
@@ -345,11 +360,11 @@ function MapsTab({ maps }: any) {
 function MatchesTab({ matches }: any) {
   if (!matches || matches.length === 0) {
     return (
-      <div style={{ textAlign:'center', padding:48, color:'var(--t3)' }}>
-        <div style={{ fontSize:32, marginBottom:12 }}>🎮</div>
-        <div style={{ fontSize:14, marginBottom:8 }}>No matches yet</div>
-        <div style={{ fontSize:12 }}>Match history appears after sharecodes are imported</div>
-      </div>
+      <EmptyState
+        icon="🎮"
+        title="No match history yet"
+        desc="Import your recent matches by adding your CS2 sharecode in your profile settings."
+      />
     )
   }
   return (
@@ -424,12 +439,20 @@ function CsgoTab({ csgoStats, cs2Stats }: any) {
 
   return (
     <div>
-      {/* Aviso */}
+      {/* Aviso — Steam API no separa CS:GO de CS2 */}
       <div style={{ background:'rgba(129,140,248,0.08)', border:'1px solid rgba(129,140,248,0.2)',
-                    borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#818cf8' }}>
-        ℹ️ CS:GO stats shown are <strong>lifetime accumulated</strong> from Steam API (CS:GO + CS2 combined). 
-        They are shown as a historical reference only.
+                    borderRadius:8, padding:'12px 14px', marginBottom:16, fontSize:12, color:'#818cf8', lineHeight:1.6 }}>
+        <strong>⚠️ Note:</strong> Steam's public API (AppID 730) returns <strong>combined lifetime stats</strong> for 
+        both CS:GO and CS2 — it is not possible to separate them without a game auth code. 
+        These stats are shown as a historical reference only.
       </div>
+      {Math.abs((csgoStats?.kills ?? 0) - (cs2Stats?.kills ?? 0)) < (cs2Stats?.kills ?? 1) * 0.05 && (
+        <div style={{ background:'rgba(234,179,8,0.08)', border:'1px solid rgba(234,179,8,0.2)',
+                      borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#eab308' }}>
+          ⚡ Your CS:GO and CS2 stats appear identical — this is expected for accounts where all 
+          playtime has been tracked since CS2's release.
+        </div>
+      )}
 
       {/* Stats globales CS:GO */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:16 }}>

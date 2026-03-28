@@ -298,8 +298,10 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats }: {
         </div>
       </div>
 
-      {/* CS:GO Legacy stats */}
-      {csgoStats && (
+      {/* CS:GO Legacy stats — solo si los datos difieren de CS2 en más de un 5%
+           La API de Steam (appid=730) mezcla CS:GO y CS2, así que si kills son
+           prácticamente iguales significa que el jugador no tiene historial separado */}
+      {csgoStats && Math.abs(csgoStats.kills - Number(stats.kills ?? 0)) > Number(stats.kills ?? 0) * 0.05 && (
         <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
                       borderRadius:8, padding:12, marginBottom:12 }}>
           <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>
