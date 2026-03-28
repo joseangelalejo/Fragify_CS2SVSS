@@ -27,20 +27,20 @@ export async function GET(req: NextRequest) {
   try {
     // Inicializar baseline (primera ejecución — no alertar histórico)
     if (!state.initialized) {
-      const [[{ maxUser }]]   = await query<[{ maxUser: number }]>(
+      const rows1 = await query<{ maxUser: number }[]>(
         'SELECT IFNULL(MAX(id_usuario), 0) AS maxUser FROM usuarios_fragify'
       )
-      const [[{ maxReport }]] = await query<[{ maxReport: number }]>(
+      const rows2 = await query<{ maxReport: number }[]>(
         'SELECT IFNULL(MAX(id_reporte), 0) AS maxReport FROM reportes_conducta'
       )
-      state.lastNewUserId = maxUser
-      state.lastReportId  = maxReport
+      state.lastNewUserId = rows1[0].maxUser
+      state.lastReportId  = rows2[0].maxReport
       state.initialized   = true
-      results.push(`baseline users=${maxUser} reports=${maxReport}`)
+      results.push(`baseline users=${rows1[0].maxUser} reports=${rows2[0].maxReport}`)
     }
 
     // Nuevos usuarios registrados
-    const newUsers = await query<any[]>(
+    const newUsers = await query<{ id_usuario: number; email: string; nombre_usuario_steam: string }[]>(
       `SELECT uf.id_usuario, uf.email, j.nombre_usuario_steam
        FROM usuarios_fragify uf
        JOIN jugadores_cs2 j ON uf.steam_id64 = j.steam_id64
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Nuevos reportes
-    const newReports = await query<any[]>(
+    const newReports = await query<{ id_reporte: number; reportado: string; tipo: string; severidad: number }[]>(
       `SELECT r.id_reporte, j.nombre_usuario_steam AS reportado,
               ti.codigo AS tipo, ti.severidad
        FROM reportes_conducta r
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Anomalías: spam de reportes (>5 del mismo usuario en 5 min)
-    const spammers = await query<any[]>(`
+    const spammers = await query<{ nombre: string; num: number }[]>(`
       SELECT j.nombre_usuario_steam AS nombre, COUNT(*) AS num
       FROM reportes_conducta r
       JOIN jugadores_cs2 j ON r.steam_id64_reportador = j.steam_id64
@@ -85,10 +85,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Anomalías: pico de registros (>10 en 5 min)
-    const [[{ nuevos }]] = await query<[{ nuevos: number }]>(`
+    const regRows = await query<{ nuevos: number }[]>(`
       SELECT COUNT(*) AS nuevos FROM usuarios_fragify
       WHERE fecha_registro > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
     `)
+    const nuevos = regRows[0].nuevos
     if (nuevos >= 10) {
       await notify.suspiciousActivity(
         `Pico de registros: *${nuevos}* usuarios en 5 min (posible bot)`
