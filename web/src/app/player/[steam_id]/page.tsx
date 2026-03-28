@@ -10,6 +10,9 @@ export const dynamic = 'force-dynamic'
 const STEAM_KEY  = process.env.STEAM_API_KEY
 const CS2_APP_ID = 730
 
+// Solo se llama si el jugador NO tiene ninguna partida en partidas_cs2
+// (es decir, usuario nuevo que visita por primera vez su perfil).
+// NO sobreescribe estadísticas de jugadores con datos reales importados.
 async function importFromSteam(steamId: string): Promise<boolean> {
   if (!STEAM_KEY) return false
   try {
@@ -32,12 +35,9 @@ async function importFromSteam(steamId: string): Promise<boolean> {
     const mvps    = get('total_mvps')
     const wins    = get('total_wins')
     const rounds  = get('total_rounds_played')
-    // CS2 API: tiempo en segundos
     const tiempo  = Math.round(get('total_time_played') / 60)
     const kd      = deaths > 0 ? parseFloat((kills / deaths).toFixed(2)) : kills > 0 ? kills : 0
     const hsRatio = kills  > 0 ? parseFloat((hs / kills * 100).toFixed(2)) : 0
-    // Estimación más conservadora: rounds/24 suele sobreestimar mucho,
-    // usamos wins como mínimo y rounds/30 como estimación de partidas total
     const partidas_estimadas = Math.round(rounds / 30)
     const partidas_jugadas   = wins > 0 ? Math.max(wins, partidas_estimadas) : partidas_estimadas
 
@@ -102,7 +102,7 @@ async function getCsgoStats(steamId: string) {
     if (!res.ok) return null
     const data = await res.json()
     // La API de CS:GO (730) devuelve stats acumuladas de CS:GO + CS2 mezcladas.
-    // Solo las mostramos como referencia histórica.
+    // Solo las mostramos como referencia histórica en la tab CS:GO.
     const stats = data.playerstats?.stats ?? []
     if (stats.length === 0) return null
     const get = (name: string) => stats.find((s: any) => s.name === name)?.value ?? 0
@@ -112,7 +112,7 @@ async function getCsgoStats(steamId: string) {
     const hs      = get('total_kills_headshot')
     const wins    = get('total_wins')
     const rounds  = get('total_rounds_played')
-    const tiempo  = Math.round(get('total_time_played') / 3600) // en horas
+    const tiempo  = Math.round(get('total_time_played') / 3600)
     const mvps    = get('total_mvps')
     const kd      = deaths > 0 ? parseFloat((kills / deaths).toFixed(2)) : 0
     const hsRatio = kills  > 0 ? Math.round(hs / kills * 100) : 0
@@ -122,28 +122,92 @@ async function getCsgoStats(steamId: string) {
   } catch { return null }
 }
 
+// Fuente de verdad: calcula stats directamente desde partidas_cs2 + partida_jugador
+async function getRealStatsFromMatches(steamId: string): Promise<any | null> {
+  try {
+    const [row] = await query<any[]>(`
+      SELECT
+        COUNT(*)                                                          AS total_partidas_jugadas,
+        SUM(pj.resultado = 'VICTORIA')                                    AS total_partidas_ganadas,
+        SUM(pj.resultado = 'DERROTA')                                     AS total_partidas_perdidas,
+        SUM(pj.resultado = 'EMPATE')                                      AS total_empates,
+        ROUND(SUM(pj.resultado = 'VICTORIA') * 100.0 / COUNT(*), 1)      AS porcentaje_victorias,
+        SUM(pj.kills)                                                     AS kills,
+        SUM(pj.deaths)                                                    AS deaths,
+        SUM(pj.assists)                                                   AS assists,
+        SUM(pj.headshots)                                                 AS headshots,
+        SUM(pj.mvps)                                                      AS mvps,
+        CASE WHEN SUM(pj.deaths) > 0
+             THEN ROUND(SUM(pj.kills) / SUM(pj.deaths), 2)
+             ELSE SUM(pj.kills) END                                       AS kd_ratio,
+        CASE WHEN SUM(pj.kills) > 0
+             THEN ROUND(SUM(pj.headshots) * 100.0 / SUM(pj.kills), 1)
+             ELSE 0 END                                                   AS ratio_headshots,
+        SUM(p.duracion_minutos)                                           AS tiempo_jugado
+      FROM partida_jugador pj
+      JOIN partidas_cs2 p ON pj.id_partida = p.id_partida
+      WHERE pj.steam_id64 = ?
+    `, [steamId])
+    if (!row || row.total_partidas_jugadas === 0) return null
+    return row
+  } catch (err) {
+    console.error('[getRealStatsFromMatches]', err)
+    return null
+  }
+}
+
 async function getPlayerData(steamId: string) {
   try {
-    const [stats] = await query<any[]>(
-      'SELECT * FROM vw_estadisticas_jugador_resumen WHERE steam_id64 = ?', [steamId]
-    )
-    if (!stats) {
+    const [[existing], [matchCount]] = await Promise.all([
+      query<any[]>('SELECT * FROM vw_estadisticas_jugador_resumen WHERE steam_id64 = ?', [steamId]),
+      query<any[]>('SELECT COUNT(*) AS total FROM partida_jugador WHERE steam_id64 = ?', [steamId]),
+    ])
+
+    const hasRealMatches = Number(matchCount?.total ?? 0) > 0
+
+    if (!existing && !hasRealMatches) {
+      // Jugador totalmente nuevo: intentar import desde Steam API
       const imported = await importFromSteam(steamId)
       if (!imported) return null
       const [newStats] = await query<any[]>(
         'SELECT * FROM vw_estadisticas_jugador_resumen WHERE steam_id64 = ?', [steamId]
       )
       if (!newStats) return null
-      return buildPlayerData(steamId, newStats)
+      return buildPlayerData(steamId, newStats, false)
     }
-    return buildPlayerData(steamId, stats)
+
+    if (!existing) return null
+
+    // Jugador con partidas reales: calcular stats desde BD en vez de usar estadisticas_cs2
+    if (hasRealMatches) {
+      const realStats = await getRealStatsFromMatches(steamId)
+      const mergedStats = {
+        ...existing,
+        ...(realStats && {
+          kills:                  realStats.kills,
+          deaths:                 realStats.deaths,
+          assists:                realStats.assists,
+          headshots:              realStats.headshots,
+          mvps:                   realStats.mvps,
+          kd_ratio:               realStats.kd_ratio,
+          ratio_headshots:        realStats.ratio_headshots,
+          total_partidas_jugadas: realStats.total_partidas_jugadas,
+          total_partidas_ganadas: realStats.total_partidas_ganadas,
+          porcentaje_victorias:   realStats.porcentaje_victorias,
+          tiempo_jugado:          realStats.tiempo_jugado,
+        }),
+      }
+      return buildPlayerData(steamId, mergedStats, true)
+    }
+
+    return buildPlayerData(steamId, existing, false)
   } catch (err) {
     console.error('[getPlayerData]', err)
     return null
   }
 }
 
-async function buildPlayerData(steamId: string, stats: any) {
+async function buildPlayerData(steamId: string, stats: any, hasRealMatches: boolean) {
   const [ranking] = await query<any[]>(`
     SELECT puntos_elo, tier, posicion_global FROM rankings_cs2
     WHERE steam_id64 = ? AND tipo_ranking = 'PREMIERE'
@@ -170,7 +234,7 @@ async function buildPlayerData(steamId: string, stats: any) {
     FROM vw_evolucion_elo WHERE steam_id64 = ?
     ORDER BY fecha_snapshot ASC LIMIT 100`, [steamId])
 
-  return { stats, ranking: ranking ?? null, rankHistory, matches, maps, elo }
+  return { stats, ranking: ranking ?? null, rankHistory, matches, maps, elo, hasRealMatches }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -196,7 +260,6 @@ export default async function PlayerProfilePage({ params }: Props) {
 
   return (
     <>
-      {/* Responsive: sidebar arriba en móvil, lado en desktop */}
       <style>{`
         .player-layout {
           display: grid;
@@ -217,6 +280,7 @@ export default async function PlayerProfilePage({ params }: Props) {
           steamProfile={steamProfile}
           steamId={steam_id}
           csgoStats={csgoStats}
+          hasRealMatches={data.hasRealMatches}
         />
         <PlayerTabs data={data} csgoStats={csgoStats} />
       </div>
@@ -226,16 +290,16 @@ export default async function PlayerProfilePage({ params }: Props) {
 
 function tierBadgeColor(tier: string) {
   const t = (tier ?? '').toLowerCase()
-  if (t.includes('global') || t.includes('elite'))    return { bg:'rgba(249,115,22,0.15)', color:'#f97316' }
-  if (t.includes('supreme') || t.includes('master'))  return { bg:'rgba(192,132,252,0.15)', color:'#c084fc' }
-  if (t.includes('legendary') || t.includes('legend'))return { bg:'rgba(251,191,36,0.15)', color:'#fbbf24' }
-  if (t.includes('distinguished'))                    return { bg:'rgba(96,165,250,0.15)', color:'#60a5fa' }
-  if (t.includes('guardian') || t.includes('gold'))   return { bg:'rgba(234,179,8,0.15)',  color:'#eab308' }
+  if (t.includes('global') || t.includes('elite'))     return { bg:'rgba(249,115,22,0.15)', color:'#f97316' }
+  if (t.includes('supreme') || t.includes('master'))   return { bg:'rgba(192,132,252,0.15)', color:'#c084fc' }
+  if (t.includes('legendary') || t.includes('legend')) return { bg:'rgba(251,191,36,0.15)', color:'#fbbf24' }
+  if (t.includes('distinguished'))                     return { bg:'rgba(96,165,250,0.15)', color:'#60a5fa' }
+  if (t.includes('guardian') || t.includes('gold'))    return { bg:'rgba(234,179,8,0.15)',  color:'#eab308' }
   return { bg:'rgba(100,116,139,0.15)', color:'#94a3b8' }
 }
 
-function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats }: {
-  stats: any; rankHistory: any[]; steamProfile: any; steamId: string; csgoStats: any
+function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats, hasRealMatches }: {
+  stats: any; rankHistory: any[]; steamProfile: any; steamId: string; csgoStats: any; hasRealMatches: boolean
 }) {
   const premiers    = rankHistory.filter(r => r.tipo_ranking === 'PREMIERE')
   const maps        = rankHistory.filter(r => r.tipo_ranking === 'MAPA')
@@ -278,8 +342,16 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats }: {
           </div>
         </div>
 
+        {/* Indicador fuente de datos */}
+        <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em',
+                      color: hasRealMatches ? '#22c55e' : '#eab308', marginBottom:8,
+                      display:'flex', alignItems:'center', gap:4 }}>
+          <span style={{ display:'inline-block', width:5, height:5, borderRadius:'50%',
+                          background: hasRealMatches ? '#22c55e' : '#eab308' }} />
+          {hasRealMatches ? 'CS2 · DATOS REALES' : 'CS2 · STEAM API'}
+        </div>
+
         {/* CS2 mini stats */}
-        <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>CS2</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
           {[
             { label:'MATCHES', value: played.toLocaleString('en-US') },
@@ -298,10 +370,8 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats }: {
         </div>
       </div>
 
-      {/* CS:GO Legacy stats — solo si los datos difieren de CS2 en más de un 5%
-           La API de Steam (appid=730) mezcla CS:GO y CS2, así que si kills son
-           prácticamente iguales significa que el jugador no tiene historial separado */}
-      {csgoStats && Math.abs(csgoStats.kills - Number(stats.kills ?? 0)) > Number(stats.kills ?? 0) * 0.05 && (
+      {/* CS:GO Legacy — solo si tiene datos reales y difieren de Steam API */}
+      {csgoStats && hasRealMatches && Math.abs(csgoStats.kills - kills) > kills * 0.05 && (
         <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
                       borderRadius:8, padding:12, marginBottom:12 }}>
           <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>
