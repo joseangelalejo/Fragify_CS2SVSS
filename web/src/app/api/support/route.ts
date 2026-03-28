@@ -1,8 +1,7 @@
 // src/app/api/support/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 
 function getIP(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '0.0.0.0'
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (mensaje.length > 2000)
       return NextResponse.json({ error: 'Message too long (max 2000 chars)' }, { status: 400 })
 
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     const userId  = session ? (session.user as any)?.id : null
     const ip      = getIP(req)
 
@@ -55,7 +54,7 @@ export async function POST(req: NextRequest) {
 
 // Admin: listar tickets
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session || (session.user as any)?.role !== 'ADMIN')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
@@ -69,7 +68,7 @@ export async function GET(req: NextRequest) {
 
 // Admin: actualizar estado ticket
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session || (session.user as any)?.role !== 'ADMIN')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
