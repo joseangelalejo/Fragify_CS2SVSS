@@ -27,6 +27,85 @@ function buildSteamOpenIDUrl() {
   return `https://steamcommunity.com/openid/login?${params.toString()}`
 }
 
+function SharecodeDiagram() {
+  return (
+    <div style={{ background:'#0a0c10', border:'1px solid var(--bg-border)', borderRadius:8, padding:16, marginTop:16 }}>
+      <svg viewBox="0 0 480 140" style={{ width:'100%', maxWidth:480, display:'block', margin:'0 auto' }}>
+        <rect width="480" height="140" fill="#0d0e13" rx="4"/>
+        <rect width="480" height="28" fill="#111318"/>
+        <rect x="180" width="120" height="28" fill="#1a1d27"/>
+        <text x="240" y="18" textAnchor="middle" fill="#e5e7eb" fontSize="13" fontWeight="bold">16  —  10</text>
+        <text x="90"  y="18" textAnchor="middle" fill="#60a5fa" fontSize="10">CT SIDE</text>
+        <text x="390" y="18" textAnchor="middle" fill="#f97316" fontSize="10">T SIDE</text>
+        <line x1="0" y1="28" x2="480" y2="28" stroke="#1e2130" strokeWidth="1"/>
+        {[0,1,2,3,4].map(i => (
+          <g key={i}>
+            <rect x="0" y={32+i*20} width="480" height="20" fill={i%2===0?'#111318':'#0d0e13'}/>
+            <rect x="8"  y={36+i*20} width="14" height="12" rx="2" fill="#1e2130"/>
+            <rect x="28" y={39+i*20} width={55+i*8} height="7" rx="2" fill="#374151"/>
+            <rect x="320" y={39+i*20} width="18" height="7" rx="2" fill="#374151"/>
+            <rect x="348" y={39+i*20} width="18" height="7" rx="2" fill="#374151"/>
+            <rect x="376" y={39+i*20} width="18" height="7" rx="2" fill="#374151"/>
+          </g>
+        ))}
+        <rect x="288" y="108" width="80" height="24" rx="4" fill="#22c55e"/>
+        <text x="328" y="124" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">DOWNLOAD</text>
+        <rect x="375" y="105" width="34" height="30" rx="5" fill="none" stroke="#f97316" strokeWidth="2" opacity="0.7"/>
+        <rect x="377" y="107" width="30" height="26" rx="4" fill="#f97316"/>
+        <circle cx="383" cy="120" r="2.5" fill="white"/>
+        <circle cx="391" cy="115" r="2.5" fill="white"/>
+        <circle cx="391" cy="125" r="2.5" fill="white"/>
+        <line x1="385.5" y1="118.5" x2="389" y2="116" stroke="white" strokeWidth="1.5"/>
+        <line x1="385.5" y1="121.5" x2="389" y2="124" stroke="white" strokeWidth="1.5"/>
+        <rect x="411" y="108" width="28" height="24" rx="4" fill="#1e2130"/>
+        <text x="425" y="124" textAnchor="middle" fill="#6b7280" fontSize="12">🗑</text>
+        <rect x="295" y="88" width="160" height="16" rx="3" fill="#f97316"/>
+        <text x="375" y="100" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">Copy match sharing code</text>
+        <polygon points="390,104 396,104 393,108" fill="#f97316"/>
+      </svg>
+      <p style={{ fontSize:11, color:'var(--t3)', marginTop:10, textAlign:'center' }}>
+        Click the <span style={{ color:'var(--orange)', fontWeight:700 }}>share icon</span> (highlighted) next to DOWNLOAD to copy your sharecode
+      </p>
+    </div>
+  )
+}
+
+function HowToSection() {
+  const steps = [
+    { n:1, text:'Open CS2 and go to your match history' },
+    { n:2, text:'Click "Watch" on any recent match' },
+    { n:3, text:'Select "Your Matches" at the top and pick a match' },
+    { n:4, text:'Click the share icon next to DOWNLOAD — it copies the code to your clipboard' },
+  ]
+  return (
+    <div style={{ marginBottom:20 }}>
+      <div style={{ fontSize:13, fontWeight:600, color:'var(--t2)', marginBottom:12 }}>
+        How to get your sharecode
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+        {steps.map(s => (
+          <div key={s.n} style={{ display:'flex', alignItems:'flex-start', gap:10,
+                                   background:'#0d0e13', borderRadius:8, padding:'10px 12px' }}>
+            <div style={{ width:22, height:22, borderRadius:'50%', flexShrink:0,
+                          background:'rgba(249,115,22,0.15)', border:'1px solid rgba(249,115,22,0.4)',
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:11, fontWeight:700, color:'var(--orange)' }}>
+              {s.n}
+            </div>
+            <span style={{ fontSize:12, color:'var(--t2)', lineHeight:1.5, paddingTop:2 }}>{s.text}</span>
+          </div>
+        ))}
+      </div>
+      <SharecodeDiagram />
+      <div style={{ marginTop:12, padding:'10px 14px',
+                    background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.2)',
+                    borderRadius:8, fontSize:12, color:'#22c55e' }}>
+        ✓ Paste the sharecode in the field below and click <strong>Save Sharecodes</strong>
+      </div>
+    </div>
+  )
+}
+
 export default function SteamPage() {
   const { data: session } = useSession()
   const user = session?.user as any
@@ -40,19 +119,15 @@ export default function SteamPage() {
   useEffect(() => {
     fetch('/api/profile/steam')
       .then(r => r.json())
-      .then(d => {
-        setSteamData(d)
-        setCodes({ cs2: d.sharecode_cs2 ?? '', csgo: d.sharecode_csgo ?? '' })
-      })
+      .then(d => { setSteamData(d); setCodes({ cs2: d.sharecode_cs2 ?? '', csgo: d.sharecode_csgo ?? '' }) })
       .finally(() => setLoading(false))
   }, [])
 
   async function saveCodes() {
     setSaving(true); setMsg(null)
     const res = await fetch('/api/profile/steam', {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ sharecode_cs2: codes.cs2 || null, sharecode_csgo: codes.csgo || null }),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sharecode_cs2: codes.cs2 || null, sharecode_csgo: codes.csgo || null }),
     })
     const data = await res.json()
     setSaving(false)
@@ -60,20 +135,12 @@ export default function SteamPage() {
     else setMsg({ type:'ok', text:'Sharecodes saved!' })
   }
 
-  function handleLinkSteam() {
-    window.location.href = buildSteamOpenIDUrl()
-  }
-
-  // Determinar si Steam está vinculado leyendo de BD (no de sesión, que puede estar desactualizada)
-  const isLinked = loading
-    ? !!user?.steamId  // fallback a sesión mientras carga
-    : (steamData?.steam_linked === 1 || !!steamData?.steam_id64)
+  const isLinked = loading ? !!user?.steamId : (steamData?.steam_linked === 1 || !!steamData?.steam_id64)
 
   return (
     <div>
       <h2 style={{ fontSize:24, marginBottom:24, fontFamily:'Rajdhani,sans-serif' }}>Steam & CS2</h2>
 
-      {/* Steam Link */}
       <div style={S.card}>
         <div style={S.title}>STEAM ACCOUNT</div>
         {loading ? (
@@ -98,7 +165,7 @@ export default function SteamPage() {
             <p style={{ color:'var(--t2)', fontSize:13, marginBottom:16 }}>
               Link your Steam account to view your CS2 stats and use your Steam avatar.
             </p>
-            <button onClick={handleLinkSteam}
+            <button onClick={() => { window.location.href = buildSteamOpenIDUrl() }}
               style={{ ...S.btn, background:'#1b2838', border:'1px solid #2a475e', color:'#c6d4df',
                        display:'flex', alignItems:'center', gap:10 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#c6d4df">
@@ -110,15 +177,11 @@ export default function SteamPage() {
         )}
       </div>
 
-      {/* Sharecodes */}
       <div style={S.card}>
         <div style={S.title}>MATCH HISTORY SHARECODES</div>
         {msg && <div style={msg.type === 'ok' ? S.ok : S.err}>{msg.text}</div>}
 
-        <p style={{ color:'var(--t2)', fontSize:13, marginBottom:20, lineHeight:1.6 }}>
-          To import your match history, provide your CS2 or CS:GO sharecode.
-          Find it in-game: <strong style={{ color:'var(--t1)' }}>CS2 → Your matches → Share → Copy sharecode</strong>
-        </p>
+        <HowToSection />
 
         <div style={{ display:'grid', gap:16 }}>
           <div>
