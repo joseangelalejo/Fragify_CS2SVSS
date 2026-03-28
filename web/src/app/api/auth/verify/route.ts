@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
     const rows = await query<any[]>(
-      `SELECT id_usuario FROM usuarios_fragify
+      `SELECT id_usuario, password_hash, steam_id64 FROM usuarios_fragify
        WHERE email_verify_token = ? AND email_verify_exp > ? AND email_verified = 0
        LIMIT 1`,
       [token, now]
@@ -25,7 +25,13 @@ export async function GET(req: NextRequest) {
       [rows[0].id_usuario]
     )
 
-    return NextResponse.redirect(new URL('/auth/login?verified=1', req.url))
+    // Si tiene password_hash puede loguear con email; si es solo Steam, indicarlo
+    const canLogin = !!rows[0].password_hash
+    const redirect = canLogin
+      ? '/auth/login?verified=1'
+      : '/auth/login?verified=1&steam=1'
+
+    return NextResponse.redirect(new URL(redirect, req.url))
   } catch (err) {
     console.error('[verify]', err)
     return NextResponse.redirect(new URL('/auth/login?error=server_error', req.url))

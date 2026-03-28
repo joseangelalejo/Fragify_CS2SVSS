@@ -45,7 +45,15 @@ function LoginForm() {
   const [success,  setSuccess]  = useState('')
 
   useEffect(() => {
-    if (searchParams.get('verified') === '1') setSuccess('Email verified! You can now log in.')
+    const verified = searchParams.get('verified')
+    const isSteam  = searchParams.get('steam') === '1'
+    if (verified === '1') {
+      setSuccess(
+        isSteam
+          ? 'Email verified! Your email is now linked to your Steam account.'
+          : 'Email verified! You can now log in.'
+      )
+    }
     const err = searchParams.get('error')
     if (err === 'invalid_or_expired_token') setError('Verification link is invalid or expired.')
     if (err === 'EMAIL_NOT_VERIFIED')       setError('Please verify your email before logging in.')

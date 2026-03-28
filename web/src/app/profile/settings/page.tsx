@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 
 const S = {
@@ -23,11 +23,29 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false)
   const [avatarMsg, setAvatarMsg] = useState<{ type:'ok'|'err', text:string } | null>(null)
 
-  // Account
-  const [username, setUsername]   = useState(user?.name ?? '')
-  const [email,    setEmail]      = useState(user?.email ?? '')
-  const [saving,   setSaving]     = useState(false)
-  const [acctMsg,  setAcctMsg]    = useState<{ type:'ok'|'err', text:string } | null>(null)
+  // Account — se inicializan vacíos y se rellenan desde BD via GET
+  const [username,    setUsername]    = useState('')
+  const [email,       setEmail]       = useState('')
+  const [loadingData, setLoadingData] = useState(true)
+  const [saving,      setSaving]      = useState(false)
+  const [acctMsg,     setAcctMsg]     = useState<{ type:'ok'|'err', text:string } | null>(null)
+
+  // Carga datos reales desde BD (no depende del JWT, que no tiene el email en cuentas Steam)
+  useEffect(() => {
+    fetch('/api/profile/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data.username) setUsername(data.username)
+        setEmail(data.email ?? '')
+      })
+      .catch(() => {
+        // fallback a sesión si la API falla
+        setUsername(user?.name ?? '')
+        setEmail(user?.email ?? '')
+      })
+      .finally(() => setLoadingData(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -62,9 +80,14 @@ export default function SettingsPage() {
     e.preventDefault()
     setSaving(true); setAcctMsg(null)
     const body: any = {}
-    if (username !== user?.name)  body.username = username
-    if (email    !== user?.email) body.email    = email
-    if (Object.keys(body).length === 0) { setSaving(false); setAcctMsg({ type:'ok', text:'No changes to save.' }); return }
+    if (username !== (user?.name ?? '')) body.username = username
+    if (email    !== (user?.email ?? '')) body.email   = email
+
+    if (Object.keys(body).length === 0) {
+      setSaving(false)
+      setAcctMsg({ type:'ok', text:'No changes to save.' })
+      return
+    }
 
     const res  = await fetch('/api/profile/settings', {
       method:  'PATCH',
@@ -75,10 +98,10 @@ export default function SettingsPage() {
     setSaving(false)
     if (!res.ok) { setAcctMsg({ type:'err', text:data.error }); return }
     if (data.emailPending) {
-        setAcctMsg({ type:'ok', text:'Username saved! A verification email has been sent to your new address. Please verify it before it becomes active.' })
-      } else {
-        setAcctMsg({ type:'ok', text:'Account updated!' })
-      }
+      setAcctMsg({ type:'ok', text:'Username saved! A verification email has been sent to your new address. Please verify it before it becomes active.' })
+    } else {
+      setAcctMsg({ type:'ok', text:'Account updated!' })
+    }
     if (body.username) await update({ name: body.username })
   }
 
@@ -137,10 +160,11 @@ export default function SettingsPage() {
           <div style={{ marginBottom:16 }}>
             <label style={S.label}>Username</label>
             <input
-              value={username}
+              value={loadingData ? '' : username}
               onChange={e => setUsername(e.target.value)}
               style={S.input}
-              placeholder="Your username"
+              placeholder={loadingData ? 'Loading...' : 'Your username'}
+              disabled={loadingData}
               onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
               onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
             />
@@ -150,16 +174,17 @@ export default function SettingsPage() {
             <label style={S.label}>Email</label>
             <input
               type="email"
-              value={email ?? ''}
+              value={loadingData ? '' : email}
               onChange={e => setEmail(e.target.value)}
               style={S.input}
-              placeholder="your@email.com"
+              placeholder={loadingData ? 'Loading...' : 'your@email.com'}
+              disabled={loadingData}
               onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
               onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
             />
             <div style={S.hint}>Used for notifications and account recovery.</div>
           </div>
-          <button type="submit" disabled={saving} style={{ ...S.btn, opacity: saving ? 0.7 : 1 }}>
+          <button type="submit" disabled={saving || loadingData} style={{ ...S.btn, opacity: (saving || loadingData) ? 0.7 : 1 }}>
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </form>
