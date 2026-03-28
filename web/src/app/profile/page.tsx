@@ -1,10 +1,21 @@
 'use client'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 
 export default function ProfilePage() {
   const { data: session } = useSession()
   const user = session?.user as any
+
+  const [email, setEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/profile/settings')
+      .then(r => r.json())
+      .then(d => setEmail(d.email ?? null))
+      .catch(() => setEmail(user?.email ?? null))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div>
@@ -44,13 +55,13 @@ export default function ProfilePage() {
           <div style={{ display:'grid', gap:12 }}>
             {[
               { label:'Username', value: user?.name ?? '—' },
-              { label:'Email',    value: user?.email ?? '—' },
+              { label:'Email',    value: email ?? '—' },
               { label:'Steam',    value: user?.steamId ? `Linked (${user.steamId})` : 'Not linked' },
               { label:'Role',     value: user?.role ?? 'USUARIO' },
             ].map(r => (
               <div key={r.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--bg-border)' }}>
                 <span style={{ fontSize:12, color:'var(--t3)', fontWeight:500 }}>{r.label}</span>
-                <span style={{ fontSize:13, color:'var(--t1)' }}>{r.value}</span>
+                <span style={{ fontSize:13, color:'var(--t1)', wordBreak:'break-all', textAlign:'right', marginLeft:16 }}>{r.value}</span>
               </div>
             ))}
           </div>
