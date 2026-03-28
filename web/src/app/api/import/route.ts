@@ -63,7 +63,7 @@ async function getNextSharingCode(
 // Steam no expone datos detallados de partida individuales en la API pública.
 // Solo podemos obtener: mapa, fecha, resultado y stats básicas del jugador.
 // Para stats detalladas necesitaríamos descargar y parsear el .dem (fuera de scope).
-async function getMatchInfoFromCode(sharecode: string): Promise<any | null> {
+async function getMatchInfoFromCode(sharecode: string): Promise<any> {
   // La API GetMatchListFromSteamId devuelve info básica
   // Usamos GetRecentMatchesForSteamId si está disponible
   // En la práctica, la única info pública es la que viene del sharecode decode
@@ -72,26 +72,38 @@ async function getMatchInfoFromCode(sharecode: string): Promise<any | null> {
   return decodeSharecode(sharecode)
 }
 
-// Decodificación de sharecode CS2/CS:GO
-// Algoritmo oficial de Valve para convertir sharecode → {matchId, outcomeId, tokenId}
-function decodeSharecode(sharecode: string): { matchId: bigint; outcomeId: bigint; tokenId: bigint } | null {
+// Decodificación de sharecode CS2/CS:GO sin BigInt (compatible ES2017)
+// El sharecode se convierte en un ID de partida único que usamos como PK en BD
+function decodeSharecode(sharecode: string): { matchId: string; outcomeId: string; tokenId: string } | null {
   try {
     const DICTIONARY = 'ABCDEFGHJKLMNOPQRSTUVWXYZabcdefhijkmnopqrstuvwxyz23456789'
     const clean = sharecode.replace('CSGO-', '').replace(/-/g, '')
-    
-    let num = 0n
+
+    // Convertir base-57 a array de bytes (144 bits = 18 bytes)
+    const bytes = new Array(18).fill(0)
     for (const char of clean.split('').reverse()) {
       const idx = DICTIONARY.indexOf(char)
       if (idx === -1) return null
-      num = num * BigInt(DICTIONARY.length) + BigInt(idx)
+      let carry = idx
+      for (let i = 0; i < 18; i++) {
+        carry += bytes[i] * DICTIONARY.length
+        bytes[i] = carry & 0xFF
+        carry >>= 8
+      }
     }
 
-    // Extraer los 3 componentes (matchId 64bit, outcomeId 64bit, tokenId 16bit)
-    const tokenId  = num & 0xFFFFn
-    num >>= 16n
-    const outcomeId = num & 0xFFFFFFFFFFFFFFFFn
-    num >>= 64n
-    const matchId   = num & 0xFFFFFFFFFFFFFFFFn
+    // matchId: bytes 0-7 (little-endian) → string para usar como PK
+    // Usamos hex para evitar pérdida de precisión con números grandes
+    const matchIdHex = bytes.slice(0, 8).reverse().map(b => b.toString(16).padStart(2, '0')).join('')
+    const outcomeIdHex = bytes.slice(8, 16).reverse().map(b => b.toString(16).padStart(2, '0')).join('')
+    const tokenIdHex = bytes.slice(16, 18).reverse().map(b => b.toString(16).padStart(2, '0')).join('')
+
+    // Convertir hex a decimal string (para compatibilidad con la BD)
+    // Convertir hex a decimal usando parseFloat para números grandes (suficiente para IDs)
+    // Usamos el hex directamente como ID de partida — es único y estable
+    const matchId   = matchIdHex
+    const outcomeId = outcomeIdHex
+    const tokenId   = tokenIdHex
 
     return { matchId, outcomeId, tokenId }
   } catch { return null }
@@ -204,7 +216,7 @@ export async function POST(req: NextRequest) {
         const decoded = decodeSharecode(currentCode)
         if (!decoded) break
 
-        const matchIdStr = decoded.matchId.toString()
+        const matchIdStr = decoded.matchId
 
         // Comprobar si ya existe en BD
         const existing = await query<any[]>(
