@@ -74,7 +74,11 @@ export default function SettingsPage() {
     const data = await res.json()
     setSaving(false)
     if (!res.ok) { setAcctMsg({ type:'err', text:data.error }); return }
-    setAcctMsg({ type:'ok', text:'Account updated! Changes will appear on next sign in.' })
+    if (data.emailPending) {
+        setAcctMsg({ type:'ok', text:'Username saved! A verification email has been sent to your new address. Please verify it before it becomes active.' })
+      } else {
+        setAcctMsg({ type:'ok', text:'Account updated!' })
+      }
     if (body.username) await update({ name: body.username })
   }
 

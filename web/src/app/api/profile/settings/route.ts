@@ -2,7 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { query } from '@/lib/db'
+import { sendVerificationEmail } from '@/lib/email'
 import dns from 'dns/promises'
+import crypto from 'crypto'
 
 async function validateEmailDomain(email: string): Promise<{ valid: boolean; reason?: string }> {
   const domain = email.split('@')[1]
@@ -26,7 +28,7 @@ export async function PATCH(req: NextRequest) {
 
   const { username, email } = await req.json()
 
-  // Validar username si se proporciona
+  // Validar username
   if (username !== undefined) {
     if (!/^[a-zA-Z0-9_-]{3,20}$/.test(username))
       return NextResponse.json({ error: 'Username must be 3-20 characters, letters, numbers, _ or -' }, { status: 400 })
@@ -37,9 +39,11 @@ export async function PATCH(req: NextRequest) {
     )
     if (existing.length > 0)
       return NextResponse.json({ error: 'Username already in use' }, { status: 409 })
+
+    await query(`UPDATE usuarios_fragify SET username = ? WHERE id_usuario = ?`, [username, userId])
   }
 
-  // Validar email si se proporciona
+  // Validar y procesar email
   if (email !== undefined) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
@@ -54,18 +58,29 @@ export async function PATCH(req: NextRequest) {
     )
     if (existing.length > 0)
       return NextResponse.json({ error: 'Email already in use' }, { status: 409 })
-  }
 
-  // Actualizar
-  if (username !== undefined && email !== undefined) {
+    // Generar token de verificación
+    const token   = crypto.randomBytes(32).toString('hex')
+    const expDate = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      .toISOString().slice(0, 19).replace('T', ' ')
+
+    // Guardar email con verified=0 y token
     await query(
-      `UPDATE usuarios_fragify SET username = ?, email = ? WHERE id_usuario = ?`,
-      [username, email.toLowerCase(), userId]
+      `UPDATE usuarios_fragify
+       SET email = ?, email_verified = 0, email_verify_token = ?, email_verify_exp = ?
+       WHERE id_usuario = ?`,
+      [email.toLowerCase(), token, expDate, userId]
     )
-  } else if (username !== undefined) {
-    await query(`UPDATE usuarios_fragify SET username = ? WHERE id_usuario = ?`, [username, userId])
-  } else if (email !== undefined) {
-    await query(`UPDATE usuarios_fragify SET email = ? WHERE id_usuario = ?`, [email.toLowerCase(), userId])
+
+    // Enviar email de verificación
+    const name = (session.user as any)?.name ?? 'User'
+    await sendVerificationEmail(email.toLowerCase(), token, name)
+
+    return NextResponse.json({
+      ok: true,
+      emailPending: true,
+      message: 'Verification email sent. Please check your inbox to confirm your new email.',
+    })
   }
 
   return NextResponse.json({ ok: true })
