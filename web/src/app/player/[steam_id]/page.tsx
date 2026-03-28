@@ -125,6 +125,7 @@ async function getCsgoStats(steamId: string) {
 // Fuente de verdad: calcula stats directamente desde partidas_cs2 + partida_jugador
 async function getRealStatsFromMatches(steamId: string): Promise<any | null> {
   try {
+    // Query 1: W/L/T y totales — todas las partidas importadas
     const [row] = await query<any[]>(`
       SELECT
         COUNT(*)                                                          AS total_partidas_jugadas,
@@ -132,24 +133,43 @@ async function getRealStatsFromMatches(steamId: string): Promise<any | null> {
         SUM(pj.resultado = 'DERROTA')                                     AS total_partidas_perdidas,
         SUM(pj.resultado = 'EMPATE')                                      AS total_empates,
         ROUND(SUM(pj.resultado = 'VICTORIA') * 100.0 / COUNT(*), 1)      AS porcentaje_victorias,
-        SUM(pj.kills)                                                     AS kills,
-        SUM(pj.deaths)                                                    AS deaths,
-        SUM(pj.assists)                                                   AS assists,
-        SUM(pj.headshots)                                                 AS headshots,
         SUM(pj.mvp)                                                       AS mvps,
-        CASE WHEN SUM(pj.deaths) > 0
-             THEN ROUND(SUM(pj.kills) / SUM(pj.deaths), 2)
-             ELSE SUM(pj.kills) END                                       AS kd_ratio,
-        CASE WHEN SUM(pj.kills) > 0
-             THEN ROUND(SUM(pj.headshots) * 100.0 / SUM(pj.kills), 1)
-             ELSE 0 END                                                   AS ratio_headshots,
         SUM(p.duracion_minutos)                                           AS tiempo_jugado
       FROM partida_jugador pj
       JOIN partidas_cs2 p ON pj.id_partida = p.id_partida
       WHERE pj.steam_id64 = ?
     `, [steamId])
     if (!row || row.total_partidas_jugadas === 0) return null
-    return row
+
+    // Query 2: K/D/HS — solo partidas donde el parser extrajo kills correctamente
+    // (~15% de partidas tienen kills=0 por limitaciones del formato PDF)
+    const [perf] = await query<any[]>(`
+      SELECT
+        SUM(pj.kills)                                                     AS kills,
+        SUM(pj.deaths)                                                    AS deaths,
+        SUM(pj.assists)                                                   AS assists,
+        SUM(pj.headshots)                                                 AS headshots,
+        COUNT(*)                                                          AS partidas_con_stats,
+        CASE WHEN SUM(pj.deaths) > 0
+             THEN ROUND(SUM(pj.kills) / SUM(pj.deaths), 2)
+             ELSE SUM(pj.kills) END                                       AS kd_ratio,
+        CASE WHEN SUM(pj.kills) > 0
+             THEN ROUND(SUM(pj.headshots) * 100.0 / SUM(pj.kills), 1)
+             ELSE 0 END                                                   AS ratio_headshots
+      FROM partida_jugador pj
+      WHERE pj.steam_id64 = ? AND pj.kills > 0
+    `, [steamId])
+
+    return {
+      ...row,
+      kills:              perf?.kills              ?? 0,
+      deaths:             perf?.deaths             ?? 0,
+      assists:            perf?.assists            ?? 0,
+      headshots:          perf?.headshots          ?? 0,
+      kd_ratio:           perf?.kd_ratio           ?? 0,
+      ratio_headshots:    perf?.ratio_headshots     ?? 0,
+      partidas_con_stats: perf?.partidas_con_stats ?? 0,
+    }
   } catch (err) {
     console.error('[getRealStatsFromMatches]', err)
     return null
@@ -194,7 +214,10 @@ async function getPlayerData(steamId: string) {
           total_partidas_jugadas: realStats.total_partidas_jugadas,
           total_partidas_ganadas: realStats.total_partidas_ganadas,
           porcentaje_victorias:   realStats.porcentaje_victorias,
-          tiempo_jugado:          realStats.tiempo_jugado,
+          partidas_con_stats:     realStats.partidas_con_stats,
+          // tiempo_jugado: mantener el de estadisticas_cs2 (Steam API = 1814h)
+          // que incluye tiempo real de juego, menús, etc.
+          // realStats.tiempo_jugado solo suma minutos de partidas importadas (~1242h)
         }),
       }
       return buildPlayerData(steamId, mergedStats, true)
