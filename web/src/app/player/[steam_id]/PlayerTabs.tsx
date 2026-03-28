@@ -100,19 +100,19 @@ export function PlayerTabs({ data, csgoStats }: { data: any; csgoStats: any }) {
 }
 
 function StatsTab({ stats, ranking, matches, maps }: any) {
-  const recent  = (matches ?? []).slice(0, 20)
-  const played  = n(stats.total_partidas_jugadas)
-  const won     = n(stats.total_partidas_ganadas)
-  const kills   = n(stats.kills)
-  const deaths  = n(stats.deaths)
-  const kd      = n(stats.kd_ratio, 2)
-  // Usar porcentaje_victorias calculado en BD (desde partidas reales si hasRealMatches)
-  // Fallback a cálculo local si no está disponible
-  const winRate = stats.porcentaje_victorias != null
+  const recent           = (matches ?? []).slice(0, 20)
+  const played           = n(stats.total_partidas_jugadas)
+  const won              = n(stats.total_partidas_ganadas)
+  const kills            = n(stats.kills)
+  const deaths           = n(stats.deaths)
+  const kd               = n(stats.kd_ratio, 2)
+  const winRate          = stats.porcentaje_victorias != null
     ? Math.round(Number(stats.porcentaje_victorias))
     : played > 0 ? Math.round((won / played) * 100) : 0
-  const hs      = n(stats.ratio_headshots)
-  const adr     = n(stats.dano_promedio_ronda, 1)
+  const hs               = n(stats.ratio_headshots)
+  const adr              = n(stats.dano_promedio_ronda, 1)
+  const partidasConStats = n(stats.partidas_con_stats)
+  const partidasSinStats = partidasConStats > 0 ? played - partidasConStats : 0
 
   return (
     <div>
@@ -131,6 +131,16 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
           </div>
         ))}
       </div>
+
+      {/* Aviso datos parciales — solo si hay partidas sin stats de kills */}
+      {partidasSinStats > 0 && (
+        <div style={{ background:'rgba(234,179,8,0.06)', border:'1px solid rgba(234,179,8,0.2)',
+                      borderRadius:8, padding:'10px 14px', marginBottom:12,
+                      fontSize:12, color:'#eab308', lineHeight:1.5 }}>
+          ⚠️ K/D, HS% y kills calculados sobre <strong>{partidasConStats.toLocaleString('en-US')}</strong> partidas con datos completos.
+          Las <strong>{partidasSinStats}</strong> restantes no incluían stats individuales en el historial importado.
+        </div>
+      )}
 
       {/* Stats numéricos */}
       <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16, marginBottom:12 }}>
