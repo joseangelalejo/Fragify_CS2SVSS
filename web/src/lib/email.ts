@@ -6,7 +6,7 @@ const FROM   = 'Fragify <noreply@miniserver.online>'
 const BASE   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fragify.miniserver.online'
 
 export async function sendVerificationEmail(email: string, token: string, name: string) {
-  const link = `${BASE}/auth/verify?token=${token}`
+  const link = `${BASE}/api/auth/verify?token=${token}`
   await resend.emails.send({
     from:    FROM,
     to:      email,
