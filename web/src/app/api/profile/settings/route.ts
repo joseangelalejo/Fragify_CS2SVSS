@@ -19,6 +19,23 @@ async function validateEmailDomain(email: string): Promise<{ valid: boolean; rea
   }
 }
 
+// GET — devuelve username y email actuales desde BD (no desde la sesión JWT)
+export async function GET() {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const userId = (session.user as any)?.id
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rows = await query<any[]>(
+    `SELECT username, email FROM usuarios_fragify WHERE id_usuario = ? LIMIT 1`,
+    [userId]
+  )
+  if (rows.length === 0) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  return NextResponse.json({ username: rows[0].username, email: rows[0].email ?? null })
+}
+
 export async function PATCH(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -59,12 +76,10 @@ export async function PATCH(req: NextRequest) {
     if (existing.length > 0)
       return NextResponse.json({ error: 'Email already in use' }, { status: 409 })
 
-    // Generar token de verificación
     const token   = crypto.randomBytes(32).toString('hex')
     const expDate = new Date(Date.now() + 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 19).replace('T', ' ')
 
-    // Guardar email con verified=0 y token
     await query(
       `UPDATE usuarios_fragify
        SET email = ?, email_verified = 0, email_verify_token = ?, email_verify_exp = ?
@@ -72,7 +87,6 @@ export async function PATCH(req: NextRequest) {
       [email.toLowerCase(), token, expDate, userId]
     )
 
-    // Enviar email de verificación
     const name = (session.user as any)?.name ?? 'User'
     await sendVerificationEmail(email.toLowerCase(), token, name)
 
