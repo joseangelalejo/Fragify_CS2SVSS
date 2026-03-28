@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -21,7 +21,7 @@ const S = {
   field:   { marginBottom:16 },
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const [email,    setEmail]    = useState('')
@@ -59,10 +59,7 @@ export default function LoginPage() {
         {error   && <div style={S.error}>{error}</div>}
         {success && <div style={S.success}>{success}</div>}
 
-        <button
-          onClick={() => signIn('steam', { callbackUrl: '/profile' })}
-          style={S.steamBtn}
-        >
+        <button onClick={() => signIn('steam', { callbackUrl: '/profile' })} style={S.steamBtn}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#c6d4df">
             <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.718L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.606 0 11.979 0z"/>
           </svg>
@@ -76,8 +73,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <div style={S.field}>
             <label style={S.label}>Email</label>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               style={S.input} placeholder="you@example.com" required
               onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
               onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
@@ -85,8 +81,7 @@ export default function LoginPage() {
           </div>
           <div style={S.field}>
             <label style={S.label}>Password</label>
-            <input
-              type="password" value={password} onChange={e => setPassword(e.target.value)}
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               style={S.input} placeholder="••••••••" required
               onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
               onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
@@ -103,5 +98,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight:'80vh', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--t2)' }}>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 }
