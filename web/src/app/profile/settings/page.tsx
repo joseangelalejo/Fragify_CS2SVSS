@@ -10,44 +10,72 @@ const S = {
   btn:   { background:'var(--orange)', color:'#fff', fontWeight:700, fontSize:13, padding:'9px 20px', borderRadius:8, border:'none', cursor:'pointer' },
   err:   { background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'#ef4444', marginBottom:12 },
   ok:    { background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'#22c55e', marginBottom:12 },
+  hint:  { fontSize:11, color:'var(--t3)', marginTop:6 },
 }
 
 export default function SettingsPage() {
   const { data: session, update } = useSession()
   const user = session?.user as any
 
-  const fileRef        = useRef<HTMLInputElement>(null)
-  const [preview, setPreview]     = useState<string | null>(null)
+  // Avatar
+  const fileRef                   = useRef<HTMLInputElement>(null)
+  const [preview,   setPreview]   = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [msg, setMsg]             = useState<{ type:'ok'|'err', text:string } | null>(null)
+  const [avatarMsg, setAvatarMsg] = useState<{ type:'ok'|'err', text:string } | null>(null)
+
+  // Account
+  const [username, setUsername]   = useState(user?.name ?? '')
+  const [email,    setEmail]      = useState(user?.email ?? '')
+  const [saving,   setSaving]     = useState(false)
+  const [acctMsg,  setAcctMsg]    = useState<{ type:'ok'|'err', text:string } | null>(null)
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
-    if (f.size > 5 * 1024 * 1024) { setMsg({ type:'err', text:'File too large (max 5MB)' }); return }
+    if (f.size > 5 * 1024 * 1024) { setAvatarMsg({ type:'err', text:'File too large (max 5MB)' }); return }
     setPreview(URL.createObjectURL(f))
   }
 
   async function uploadAvatar() {
     const f = fileRef.current?.files?.[0]
     if (!f) return
-    setUploading(true); setMsg(null)
+    setUploading(true); setAvatarMsg(null)
     const fd = new FormData(); fd.append('avatar', f)
     const res  = await fetch('/api/profile/avatar', { method:'POST', body:fd })
     const data = await res.json()
     setUploading(false)
-    if (!res.ok) { setMsg({ type:'err', text:data.error }); return }
-    setMsg({ type:'ok', text:'Avatar updated!' })
+    if (!res.ok) { setAvatarMsg({ type:'err', text:data.error }); return }
+    setAvatarMsg({ type:'ok', text:'Avatar updated!' })
     await update({ image: data.url })
     setPreview(null)
     if (fileRef.current) fileRef.current.value = ''
   }
 
   async function removeAvatar() {
-    setUploading(true); setMsg(null)
+    setUploading(true); setAvatarMsg(null)
     const res = await fetch('/api/profile/avatar', { method:'DELETE' })
     setUploading(false)
-    if (res.ok) { setMsg({ type:'ok', text:'Avatar removed.' }); await update({ image: null }) }
+    if (res.ok) { setAvatarMsg({ type:'ok', text:'Avatar removed.' }); await update({ image: null }) }
+  }
+
+  async function saveAccount(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true); setAcctMsg(null)
+    const body: any = {}
+    if (username !== user?.name)  body.username = username
+    if (email    !== user?.email) body.email    = email
+    if (Object.keys(body).length === 0) { setSaving(false); setAcctMsg({ type:'ok', text:'No changes to save.' }); return }
+
+    const res  = await fetch('/api/profile/settings', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    })
+    const data = await res.json()
+    setSaving(false)
+    if (!res.ok) { setAcctMsg({ type:'err', text:data.error }); return }
+    setAcctMsg({ type:'ok', text:'Account updated! Changes will appear on next sign in.' })
+    if (body.username) await update({ name: body.username })
   }
 
   const currentAvatar = preview ?? user?.image
@@ -59,7 +87,7 @@ export default function SettingsPage() {
       {/* Avatar */}
       <div style={S.card}>
         <div style={S.title}>PROFILE PICTURE</div>
-        {msg && <div style={msg.type === 'ok' ? S.ok : S.err}>{msg.text}</div>}
+        {avatarMsg && <div style={avatarMsg.type === 'ok' ? S.ok : S.err}>{avatarMsg.text}</div>}
 
         <div style={{ display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
           <div style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', background:'var(--bg-border)', flexShrink:0 }}>
@@ -97,20 +125,40 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Account info (read-only for now) */}
+      {/* Account */}
       <div style={S.card}>
         <div style={S.title}>ACCOUNT</div>
-        <div style={{ display:'grid', gap:16 }}>
-          <div>
+        {acctMsg && <div style={acctMsg.type === 'ok' ? S.ok : S.err}>{acctMsg.text}</div>}
+        <form onSubmit={saveAccount}>
+          <div style={{ marginBottom:16 }}>
             <label style={S.label}>Username</label>
-            <input value={user?.name ?? ''} readOnly style={{ ...S.input, opacity:0.6, cursor:'not-allowed' }} />
+            <input
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              style={S.input}
+              placeholder="Your username"
+              onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+              onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+            />
+            <div style={S.hint}>3-20 characters, letters, numbers, _ or -</div>
           </div>
-          <div>
+          <div style={{ marginBottom:16 }}>
             <label style={S.label}>Email</label>
-            <input value={user?.email ?? ''} readOnly style={{ ...S.input, opacity:0.6, cursor:'not-allowed' }} />
+            <input
+              type="email"
+              value={email ?? ''}
+              onChange={e => setEmail(e.target.value)}
+              style={S.input}
+              placeholder="your@email.com"
+              onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+              onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+            />
+            <div style={S.hint}>Used for notifications and account recovery.</div>
           </div>
-        </div>
-        <p style={{ color:'var(--t3)', fontSize:12, marginTop:12 }}>Username and email changes coming soon.</p>
+          <button type="submit" disabled={saving} style={{ ...S.btn, opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </form>
       </div>
     </div>
   )
