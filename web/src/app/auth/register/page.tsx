@@ -1,8 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+
+const NEXTAUTH_URL = 'https://fragify.miniserver.online'
 
 const S = {
   wrap:    { minHeight:'80vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px' },
@@ -20,6 +21,18 @@ const S = {
   success: { background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'#22c55e', marginBottom:16 },
   field:   { marginBottom:16 },
   hint:    { fontSize:11, color:'var(--t3)', marginTop:4 },
+}
+
+function buildSteamOpenIDUrl() {
+  const params = new URLSearchParams({
+    'openid.ns':         'http://specs.openid.net/auth/2.0',
+    'openid.mode':       'checkid_setup',
+    'openid.return_to':  `${NEXTAUTH_URL}/api/auth/steam/callback`,
+    'openid.realm':      NEXTAUTH_URL,
+    'openid.identity':   'http://specs.openid.net/auth/2.0/identifier_select',
+    'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
+  })
+  return `https://steamcommunity.com/openid/login?${params.toString()}`
 }
 
 export default function RegisterPage() {
@@ -49,6 +62,10 @@ export default function RegisterPage() {
     setSuccess('Account created! Check your email to verify your account before logging in.')
   }
 
+  function handleSteamRegister() {
+    window.location.href = buildSteamOpenIDUrl()
+  }
+
   return (
     <div style={S.wrap}>
       <div style={S.card}>
@@ -58,64 +75,60 @@ export default function RegisterPage() {
         {error   && <div style={S.error}>{error}</div>}
         {success && <div style={S.success}>{success}</div>}
 
-        {!success && (<>
-          <button onClick={() => signIn('steam', { callbackUrl: '/profile' })} style={S.steamBtn}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="#c6d4df">
-              <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.718L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.606 0 11.979 0z"/>
-            </svg>
-            Sign up with Steam
-          </button>
-
-          <div style={S.divider}>
-            <div style={S.divLine}/><span style={S.divText}>or create account with email</span><div style={S.divLine}/>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            {/* Honeypot */}
-            <input name="honeypot" style={{ display:'none' }} tabIndex={-1} autoComplete="off" />
-
-            <div style={S.field}>
-              <label style={S.label}>Username</label>
-              <input value={form.username} onChange={e => set('username', e.target.value)}
-                style={S.input} placeholder="fragpro123" required
-                onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
-                onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
-              />
-              <div style={S.hint}>3-20 characters, letters, numbers, _ or -</div>
-            </div>
-
-            <div style={S.field}>
-              <label style={S.label}>Email</label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
-                style={S.input} placeholder="you@example.com" required
-                onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
-                onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
-              />
-            </div>
-
-            <div style={S.field}>
-              <label style={S.label}>Password</label>
-              <input type="password" value={form.password} onChange={e => set('password', e.target.value)}
-                style={S.input} placeholder="Min 8 chars, at least 1 number" required
-                onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
-                onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
-              />
-            </div>
-
-            <div style={S.field}>
-              <label style={S.label}>Confirm Password</label>
-              <input type="password" value={form.confirm} onChange={e => set('confirm', e.target.value)}
-                style={S.input} placeholder="Repeat password" required
-                onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
-                onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
-              />
-            </div>
-
-            <button type="submit" disabled={loading} style={{ ...S.btn, opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Creating account...' : 'Create Account'}
+        {!success && (
+          <>
+            <button onClick={handleSteamRegister} style={S.steamBtn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#c6d4df">
+                <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.718L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.606 0 11.979 0z"/>
+              </svg>
+              Sign up with Steam
             </button>
-          </form>
-        </>)}
+
+            <div style={S.divider}>
+              <div style={S.divLine}/><span style={S.divText}>or register with email</span><div style={S.divLine}/>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div style={S.field}>
+                <label style={S.label}>Username</label>
+                <input value={form.username} onChange={e => set('username', e.target.value)}
+                  style={S.input} placeholder="Your username" required minLength={3} maxLength={20}
+                  onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+                  onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+                />
+                <div style={S.hint}>3-20 characters, letters, numbers, _ or -</div>
+              </div>
+              <div style={S.field}>
+                <label style={S.label}>Email</label>
+                <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
+                  style={S.input} placeholder="you@example.com" required
+                  onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+                  onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+                />
+              </div>
+              <div style={S.field}>
+                <label style={S.label}>Password</label>
+                <input type="password" value={form.password} onChange={e => set('password', e.target.value)}
+                  style={S.input} placeholder="••••••••" required minLength={8}
+                  onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+                  onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+                />
+                <div style={S.hint}>Min. 8 characters, must include a number</div>
+              </div>
+              <div style={S.field}>
+                <label style={S.label}>Confirm password</label>
+                <input type="password" value={form.confirm} onChange={e => set('confirm', e.target.value)}
+                  style={S.input} placeholder="••••••••" required
+                  onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+                  onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+                />
+              </div>
+              <button type="submit" disabled={loading} style={{ ...S.btn, opacity: loading ? 0.7 : 1 }}>
+                {loading ? 'Creating account...' : 'Create Account'}
+              </button>
+            </form>
+          </>
+        )}
 
         <div style={{ textAlign:'center', marginTop:20, fontSize:13, color:'var(--t3)' }}>
           Already have an account?{' '}
