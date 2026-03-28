@@ -4,6 +4,8 @@ import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
+const NEXTAUTH_URL = 'https://fragify.miniserver.online'
+
 const S = {
   wrap:    { minHeight:'80vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px' },
   card:    { background:'var(--bg-card)', border:'1px solid var(--bg-border)', borderRadius:12, padding:'40px', width:'100%', maxWidth:420 },
@@ -21,6 +23,18 @@ const S = {
   field:   { marginBottom:16 },
 }
 
+function buildSteamOpenIDUrl() {
+  const params = new URLSearchParams({
+    'openid.ns':         'http://specs.openid.net/auth/2.0',
+    'openid.mode':       'checkid_setup',
+    'openid.return_to':  `${NEXTAUTH_URL}/api/auth/steam/callback`,
+    'openid.realm':      NEXTAUTH_URL,
+    'openid.identity':   'http://specs.openid.net/auth/2.0/identifier_select',
+    'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
+  })
+  return `https://steamcommunity.com/openid/login?${params.toString()}`
+}
+
 function LoginForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -32,8 +46,12 @@ function LoginForm() {
 
   useEffect(() => {
     if (searchParams.get('verified') === '1') setSuccess('Email verified! You can now log in.')
-    if (searchParams.get('error') === 'invalid_or_expired_token') setError('Verification link is invalid or expired.')
-    if (searchParams.get('error') === 'EMAIL_NOT_VERIFIED') setError('Please verify your email before logging in.')
+    const err = searchParams.get('error')
+    if (err === 'invalid_or_expired_token') setError('Verification link is invalid or expired.')
+    if (err === 'EMAIL_NOT_VERIFIED')       setError('Please verify your email before logging in.')
+    if (err === 'SteamFailed')              setError('Steam authentication failed. Please try again.')
+    if (err === 'SteamInvalid')             setError('Steam authentication invalid. Please try again.')
+    if (err === 'Configuration')            setError('Authentication configuration error. Please try again.')
   }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -43,11 +61,15 @@ function LoginForm() {
     setLoading(false)
     if (res?.error) {
       if (res.error === 'EMAIL_NOT_VERIFIED') setError('Please verify your email before logging in.')
-      else if (res.error === 'USE_STEAM') setError('This account was created with Steam. Please use Sign in with Steam.')
+      else if (res.error === 'USE_STEAM')     setError('This account was created with Steam. Please use Sign in with Steam.')
       else setError('Invalid email or password.')
     } else {
       router.push('/profile')
     }
+  }
+
+  function handleSteamLogin() {
+    window.location.href = buildSteamOpenIDUrl()
   }
 
   return (
@@ -59,7 +81,7 @@ function LoginForm() {
         {error   && <div style={S.error}>{error}</div>}
         {success && <div style={S.success}>{success}</div>}
 
-        <button onClick={() => signIn('steam', { callbackUrl: '/profile' })} style={S.steamBtn}>
+        <button onClick={handleSteamLogin} style={S.steamBtn}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#c6d4df">
             <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.718L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.606 0 11.979 0z"/>
           </svg>
