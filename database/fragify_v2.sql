@@ -308,7 +308,7 @@ CREATE TABLE partidas_cs2 (
 
 ALTER TABLE partidas_cs2
     ADD CONSTRAINT chk_duracion
-        CHECK (duracion_minutos BETWEEN 20 AND 90),
+        CHECK (duracion_minutos BETWEEN 1 AND 120),
     ADD CONSTRAINT chk_demo_format
         CHECK (codigo_comparticion_demo REGEXP
                '^CSGO-[A-Za-z0-9]{5}-[A-Za-z0-9]{10}-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}$'
