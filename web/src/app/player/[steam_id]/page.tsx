@@ -136,7 +136,7 @@ async function getRealStatsFromMatches(steamId: string): Promise<any | null> {
         SUM(pj.deaths)                                                    AS deaths,
         SUM(pj.assists)                                                   AS assists,
         SUM(pj.headshots)                                                 AS headshots,
-        SUM(pj.mvps)                                                      AS mvps,
+        SUM(pj.mvp)                                                       AS mvps,
         CASE WHEN SUM(pj.deaths) > 0
              THEN ROUND(SUM(pj.kills) / SUM(pj.deaths), 2)
              ELSE SUM(pj.kills) END                                       AS kd_ratio,
