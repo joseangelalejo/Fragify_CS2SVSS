@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['192.168.24.235', '192.168.24.103'],
 
   // En Vercel: /api/* se reescribe al backend del homelab
-  // En dev local (homelab con npm run dev): sin rewrite, Next.js sirve las rutas directamente
+  // EXCEPTO /api/auth/* que debe ser manejado por Next.js (Auth.js)
   async rewrites() {
     const apiUrl = process.env.API_URL
     if (!apiUrl || apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1')) {
@@ -16,8 +16,8 @@ const nextConfig: NextConfig = {
     }
     return [
       {
-        source: '/api/:path*',
-        destination: `${apiUrl}/api/:path*`,
+        source: '/api/((?!auth).*)',
+        destination: `${apiUrl}/api/$1`,
       },
     ]
   },
