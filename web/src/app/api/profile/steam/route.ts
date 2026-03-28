@@ -1,12 +1,11 @@
 // src/app/api/profile/steam/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { query } from '@/lib/db'
+import { auth } from '@/lib/auth'
 
 // GET — obtener estado Steam del usuario actual
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = (session.user as any)?.id
@@ -20,7 +19,7 @@ export async function GET(req: NextRequest) {
 
 // PATCH — actualizar sharecodes
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = (session.user as any)?.id
@@ -42,7 +41,7 @@ export async function PATCH(req: NextRequest) {
 
 // POST — vincular Steam manualmente con steam_id64
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId   = (session.user as any)?.id
