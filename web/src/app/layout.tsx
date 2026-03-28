@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
+import { Providers } from '@/components/auth/Providers'
+import { SupportButton } from '@/components/ui/SupportButton'
 
 export const metadata: Metadata = {
   title:       { default: 'Fragify — CS2 Stats', template: '%s | Fragify' },
@@ -11,14 +13,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ minHeight:'100vh', display:'flex', flexDirection:'column',
-                     margin:0, padding:0 }}>
-        <Navbar />
-        <main style={{ flex:1, maxWidth:1400, width:'100%', margin:'0 auto',
-                       padding:'24px 16px' }}>
-          {children}
-        </main>
-        <Footer />
+      <body style={{ minHeight:'100vh', display:'flex', flexDirection:'column', margin:0, padding:0 }}>
+        <Providers>
+          <Navbar />
+          <main style={{ flex:1, maxWidth:1400, width:'100%', margin:'0 auto', padding:'24px 16px' }}>
+            {children}
+          </main>
+          <Footer />
+          <SupportButton />
+        </Providers>
       </body>
     </html>
   )

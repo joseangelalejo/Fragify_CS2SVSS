@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 
 const NAV_LINKS = [
   { href: '/',        label: 'HOME' },
@@ -17,18 +18,21 @@ const S = {
   searchIcon: { position:'absolute' as const, left:10, top:'50%', transform:'translateY(-50%)', color:'var(--t3)', pointerEvents:'none' as const, display:'flex' },
   searchInput:{ width:'100%', background:'#0d0e13', border:'1px solid var(--bg-border)', borderRadius:6, padding:'6px 12px 6px 32px', fontSize:12, color:'var(--t1)', outline:'none', fontFamily:'inherit' },
   rightGroup: { display:'flex', flexDirection:'row' as const, alignItems:'center', gap:8, marginLeft:'auto', flexShrink:0 },
-  iconBtn:    { display:'flex', alignItems:'center', justifyContent:'center', color:'var(--t2)', background:'#1a1d27', border:'1px solid var(--bg-border)', borderRadius:6, padding:'5px 8px', cursor:'pointer', fontSize:15 },
   profileBtn: { display:'flex', flexDirection:'row' as const, alignItems:'center', gap:8, background:'#1a1d27', border:'1px solid var(--bg-border)', borderRadius:6, padding:'4px 10px', cursor:'pointer' },
-  avatar:     { width:24, height:24, borderRadius:'50%', background:'var(--bg-border)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--t2)' },
+  avatar:     { width:24, height:24, borderRadius:'50%', background:'var(--bg-border)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--t2)', overflow:'hidden' as const, flexShrink:0 },
   dropdown:   { position:'absolute' as const, right:0, top:'calc(100% + 6px)', minWidth:180, background:'#1a1d27', border:'1px solid var(--bg-border)', borderRadius:8, boxShadow:'0 8px 24px rgba(0,0,0,0.5)', zIndex:100 },
   dropItem:   { display:'flex', alignItems:'center', gap:10, padding:'10px 14px', fontSize:13, color:'var(--t1)', textDecoration:'none', width:'100%', background:'none', border:'none', cursor:'pointer' },
   navBar:     { borderTop:'1px solid var(--bg-border)' },
   nav:        { display:'flex', flexDirection:'row' as const, alignItems:'center', padding:'0 16px', maxWidth:1400, margin:'0 auto' },
+  loginBtn:   { display:'flex', alignItems:'center', gap:6, background:'var(--orange)', color:'#fff', fontWeight:700, fontSize:12, padding:'5px 14px', borderRadius:6, textDecoration:'none', flexShrink:0 },
 }
 
 export function Navbar() {
   const router   = useRouter()
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const user = session?.user as any
+
   const [q,           setQ]           = useState('')
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -65,8 +69,7 @@ export function Navbar() {
             </svg>
           </div>
           <input
-            value={q}
-            onChange={e => setQ(e.target.value)}
+            value={q} onChange={e => setQ(e.target.value)}
             placeholder="Search for a player (Steam ID / Steam Profile Link) or add a match"
             style={S.searchInput}
             onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
@@ -75,34 +78,51 @@ export function Navbar() {
         </form>
 
         <div style={S.rightGroup}>
-          <button style={S.iconBtn}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-          </button>
+          {session ? (
+            <div ref={profileRef} style={{ position:'relative' }}>
+              <button onClick={() => setProfileOpen(p => !p)} style={S.profileBtn}>
+                <div style={S.avatar}>
+                  {user?.image
+                    ? <img src={user.image} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    : '👤'
+                  }
+                </div>
+                <span style={{ fontSize:12, color:'var(--t1)', maxWidth:100, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {user?.name ?? 'Account'}
+                </span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" strokeWidth="2">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </button>
 
-          <div ref={profileRef} style={{ position:'relative' }}>
-            <button onClick={() => setProfileOpen(p => !p)} style={S.profileBtn}>
-              <div style={S.avatar}>👤</div>
-              <span style={{ fontSize:12, color:'var(--t1)' }}>Account</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" strokeWidth="2">
-                <path d="m6 9 6 6 6-6"/>
-              </svg>
-            </button>
-
-            {profileOpen && (
-              <div style={S.dropdown}>
-                <Link href="/player" onClick={() => setProfileOpen(false)} style={S.dropItem}>
-                  👤 Your Profile
-                </Link>
-                <div style={{ borderTop:'1px solid var(--bg-border)', margin:'4px 0' }} />
-                <button style={{ ...S.dropItem, color:'var(--t2)' }}>
-                  🚪 Logout
-                </button>
-              </div>
-            )}
-          </div>
+              {profileOpen && (
+                <div style={S.dropdown}>
+                  {user?.steamId && (
+                    <Link href={`/player/${user.steamId}`} onClick={() => setProfileOpen(false)} style={S.dropItem}>
+                      🎮 My CS2 Profile
+                    </Link>
+                  )}
+                  <Link href="/profile" onClick={() => setProfileOpen(false)} style={S.dropItem}>
+                    👤 Account Settings
+                  </Link>
+                  {user?.role === 'ADMIN' && (
+                    <Link href="/admin/dashboard" onClick={() => setProfileOpen(false)} style={{ ...S.dropItem, color:'var(--orange)' }}>
+                      ⚙️ Admin Panel
+                    </Link>
+                  )}
+                  <div style={{ borderTop:'1px solid var(--bg-border)', margin:'4px 0' }} />
+                  <button onClick={() => { setProfileOpen(false); signOut({ callbackUrl: '/' }) }}
+                    style={{ ...S.dropItem, color:'var(--t2)' }}>
+                    🚪 Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link href="/auth/login" style={S.loginBtn}>
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
 
