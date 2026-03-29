@@ -59,7 +59,7 @@ export default function RegisterPage() {
     setLoading(false)
 
     if (!res.ok) { setError(data.error ?? 'Registration failed'); return }
-    setSuccess('Account created! Check your email to verify your account before logging in.')
+    setSuccess('Account created! Check your email to verify your account before logging in. If you used Hotmail/Outlook, check your spam folder or use Gmail instead.')
   }
 
   function handleSteamRegister() {

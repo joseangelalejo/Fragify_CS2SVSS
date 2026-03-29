@@ -7,7 +7,15 @@ import { SupportButton } from '@/components/ui/SupportButton'
 
 export const metadata: Metadata = {
   title:       { default: 'Fragify — CS2 Stats', template: '%s | Fragify' },
-  description: 'Track your CS2 stats in Competitive and Premier matchmaking.',
+  description: 'Track your CS2 stats in Competitive and Premier matchmaking. Search any player by Steam ID.',
+  keywords:    ['CS2', 'Counter-Strike 2', 'stats', 'competitive', 'premier', 'leaderboards'],
+  openGraph: {
+    title:       'Fragify — CS2 Stats',
+    description: 'Track your CS2 stats in Competitive and Premier matchmaking.',
+    siteName:    'Fragify',
+    locale:      'en_US',
+    type:        'website',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

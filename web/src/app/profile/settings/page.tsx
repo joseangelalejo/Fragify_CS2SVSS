@@ -98,7 +98,7 @@ export default function SettingsPage() {
     setSaving(false)
     if (!res.ok) { setAcctMsg({ type:'err', text:data.error }); return }
     if (data.emailPending) {
-      setAcctMsg({ type:'ok', text:'Username saved! A verification email has been sent to your new address. Please verify it before it becomes active.' })
+      setAcctMsg({ type:'ok', text:'Username saved! A verification email has been sent to your new address. Please verify it before it becomes active. If using Hotmail/Outlook, check your spam folder or use Gmail.' })
     } else {
       setAcctMsg({ type:'ok', text:'Account updated!' })
     }
@@ -165,6 +165,8 @@ export default function SettingsPage() {
               style={S.input}
               placeholder={loadingData ? 'Loading...' : 'Your username'}
               disabled={loadingData}
+              minLength={3}
+              maxLength={20}
               onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
               onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
             />

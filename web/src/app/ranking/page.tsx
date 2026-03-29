@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
+// Título de pestaña dinámico — no se puede usar export metadata en 'use client'
+// Se gestiona via useEffect en el componente
+
 type PremierPlayer = {
   steam_id64: string
   nombre_usuario_steam: string
@@ -56,6 +59,10 @@ export default function RankingPage() {
   const [premier,     setPremier]     = useState<PremierPlayer[]>([])
   const [competitive, setCompetitive] = useState<CompetitivePlayer[]>([])
   const [loading,     setLoading]     = useState(true)
+
+  useEffect(() => {
+    document.title = `${tab === 'PREMIER' ? 'Premier' : 'Competitive'} Leaderboards — Fragify`
+  }, [tab])
 
   useEffect(() => {
     setLoading(true)
