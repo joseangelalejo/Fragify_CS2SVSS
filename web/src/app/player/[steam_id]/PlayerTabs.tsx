@@ -424,7 +424,7 @@ function MatchesTab({ matches, modoFiltro, setModoFiltro }: any) {
         <tbody>
           {filtrados.length === 0 ? (
             <tr><td colSpan={8} style={{ textAlign:'center', padding:32, color:'var(--t3)', fontSize:13 }}>
-              No {modoLabels[modoFiltro]} matches in history.
+              No {modoLabels[modoFiltro as keyof typeof modoLabels]} matches in history.
             </td></tr>
           ) : filtrados.map((m: any, i: number) => {
             const isW = m.resultado === 'VICTORIA', isL = m.resultado === 'DERROTA'
