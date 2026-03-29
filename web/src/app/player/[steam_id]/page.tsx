@@ -257,7 +257,21 @@ async function buildPlayerData(steamId: string, stats: any, hasRealMatches: bool
     FROM vw_evolucion_elo WHERE steam_id64 = ?
     ORDER BY fecha_snapshot ASC LIMIT 100`, [steamId])
 
-  return { stats, ranking: ranking ?? null, rankHistory, matches, maps, elo, hasRealMatches }
+  // Best map y worst map (mínimo 10 partidas para ser relevante)
+  const [bestMap] = await query<any[]>(`
+    SELECT mapa, total_partidas_mapa, tasa_victoria_mapa
+    FROM vw_rendimiento_por_mapa
+    WHERE steam_id64 = ? AND total_partidas_mapa >= 10
+    ORDER BY tasa_victoria_mapa DESC LIMIT 1`, [steamId])
+
+  const [worstMap] = await query<any[]>(`
+    SELECT mapa, total_partidas_mapa, tasa_victoria_mapa
+    FROM vw_rendimiento_por_mapa
+    WHERE steam_id64 = ? AND total_partidas_mapa >= 10
+    ORDER BY tasa_victoria_mapa ASC LIMIT 1`, [steamId])
+
+  return { stats, ranking: ranking ?? null, rankHistory, matches, maps, elo, hasRealMatches,
+           bestMap: bestMap ?? null, worstMap: worstMap ?? null }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -304,6 +318,8 @@ export default async function PlayerProfilePage({ params }: Props) {
           steamId={steam_id}
           csgoStats={csgoStats}
           hasRealMatches={data.hasRealMatches}
+          bestMap={data.bestMap ?? null}
+          worstMap={data.worstMap ?? null}
         />
         <PlayerTabs data={data} csgoStats={csgoStats} />
       </div>
@@ -321,8 +337,9 @@ function tierBadgeColor(tier: string) {
   return { bg:'rgba(100,116,139,0.15)', color:'#94a3b8' }
 }
 
-function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats, hasRealMatches }: {
+function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats, hasRealMatches, bestMap, worstMap }: {
   stats: any; rankHistory: any[]; steamProfile: any; steamId: string; csgoStats: any; hasRealMatches: boolean
+  bestMap: any; worstMap: any
 }) {
   const premiers    = rankHistory.filter(r => r.tipo_ranking === 'PREMIERE')
   const maps        = rankHistory.filter(r => r.tipo_ranking === 'MAPA')
@@ -392,6 +409,48 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats, hasReal
           ))}
         </div>
       </div>
+
+      {/* Best / Worst Map — solo si tiene partidas reales importadas */}
+      {hasRealMatches && (bestMap || worstMap) && (
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                      borderRadius:8, padding:12, marginBottom:12 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.12em', color:'var(--t3)', marginBottom:8 }}>
+            MAP PERFORMANCE
+          </div>
+          {bestMap && (
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                           padding:'5px 0', borderBottom:'1px solid #191c28' }}>
+              <div>
+                <div style={{ fontSize:9, color:'var(--t3)', letterSpacing:'0.08em' }}>BEST MAP</div>
+                <div style={{ fontSize:12, color:'var(--t1)', fontWeight:600 }}>{bestMap.mapa}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontSize:14, fontWeight:700, color:'#22c55e',
+                               fontFamily:'IBM Plex Mono,monospace' }}>
+                  {Number(bestMap.tasa_victoria_mapa).toFixed(0)}%
+                </div>
+                <div style={{ fontSize:10, color:'var(--t3)' }}>{bestMap.total_partidas_mapa}p</div>
+              </div>
+            </div>
+          )}
+          {worstMap && worstMap.mapa !== bestMap?.mapa && (
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                           padding:'5px 0' }}>
+              <div>
+                <div style={{ fontSize:9, color:'var(--t3)', letterSpacing:'0.08em' }}>WORST MAP</div>
+                <div style={{ fontSize:12, color:'var(--t1)', fontWeight:600 }}>{worstMap.mapa}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontSize:14, fontWeight:700, color:'#ef4444',
+                               fontFamily:'IBM Plex Mono,monospace' }}>
+                  {Number(worstMap.tasa_victoria_mapa).toFixed(0)}%
+                </div>
+                <div style={{ fontSize:10, color:'var(--t3)' }}>{worstMap.total_partidas_mapa}p</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* CS:GO Legacy — solo si tiene datos reales y difieren de Steam API */}
       {csgoStats && hasRealMatches && Math.abs(csgoStats.kills - kills) > kills * 0.05 && (
