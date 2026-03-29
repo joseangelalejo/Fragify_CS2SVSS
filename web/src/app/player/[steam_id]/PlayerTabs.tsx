@@ -58,6 +58,7 @@ function WinCircle({ pct }: { pct: number }) {
 export function PlayerTabs({ data, csgoStats }: { data: any; csgoStats: any }) {
   const tabs: Tab[] = csgoStats ? ['STATS','GRAPHS','MAPS','MATCHES','CSGO'] : ['STATS','GRAPHS','MAPS','MATCHES']
   const [tab, setTab] = useState<Tab>('STATS')
+  const [modoFiltro, setModoFiltro] = useState<'ALL'|'COMPETITIVO'|'WINGMAN'>('ALL')
   const { stats, ranking, matches, maps, elo } = data
 
   return (
@@ -92,7 +93,7 @@ export function PlayerTabs({ data, csgoStats }: { data: any; csgoStats: any }) {
         {tab === 'STATS'   && <StatsTab   stats={stats} ranking={ranking} matches={matches} maps={maps} />}
         {tab === 'GRAPHS'  && <GraphsTab  elo={elo} />}
         {tab === 'MAPS'    && <MapsTab    maps={maps} />}
-        {tab === 'MATCHES' && <MatchesTab matches={matches} />}
+        {tab === 'MATCHES' && <MatchesTab matches={matches} modoFiltro={modoFiltro} setModoFiltro={setModoFiltro} />}
         {tab === 'CSGO'    && <CsgoTab    csgoStats={csgoStats} cs2Stats={stats} />}
       </div>
     </div>
@@ -229,7 +230,7 @@ function StatsTab({ stats, ranking, matches, maps }: any) {
           </div>
           <div style={{ background:'#111318', border:'1px solid var(--bg-border)', borderRadius:8, padding:16 }}>
             <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'0.1em', marginBottom:10 }}>BEST WIN RATE</div>
-            {[...maps].sort((a,b) => b.tasa_victoria_mapa - a.tasa_victoria_mapa).slice(0,4).map((m: any, i: number) => (
+            {[...maps].filter((m: any) => m.total_partidas_mapa >= 5).sort((a,b) => b.tasa_victoria_mapa - a.tasa_victoria_mapa).slice(0,4).map((m: any, i: number) => (
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
                                      padding:'5px 0', borderBottom:'1px solid #191c28' }}>
                 <span style={{ color:'var(--t2)', fontSize:12 }}>{m.mapa}</span>
@@ -370,7 +371,7 @@ function MapsTab({ maps }: any) {
   )
 }
 
-function MatchesTab({ matches }: any) {
+function MatchesTab({ matches, modoFiltro, setModoFiltro }: any) {
   if (!matches || matches.length === 0) {
     return (
       <EmptyState
@@ -380,7 +381,33 @@ function MatchesTab({ matches }: any) {
       />
     )
   }
+
+  const modos: ('ALL'|'COMPETITIVO'|'WINGMAN')[] = ['ALL','COMPETITIVO','WINGMAN']
+  const modoLabels = { ALL:'All Modes', COMPETITIVO:'Competitive 5v5', WINGMAN:'Wingman 2v2' }
+  const filtrados = modoFiltro === 'ALL'
+    ? matches
+    : matches.filter((m: any) => m.modo === modoFiltro)
+
   return (
+    <div>
+      {/* Filtro por modo */}
+      <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+        {modos.map(m => (
+          <button key={m} onClick={() => setModoFiltro(m)} style={{
+            fontSize:11, fontWeight:600, padding:'4px 10px', borderRadius:4, cursor:'pointer',
+            border: modoFiltro === m ? '1px solid var(--orange)' : '1px solid var(--bg-border)',
+            background: modoFiltro === m ? 'rgba(249,115,22,0.1)' : 'transparent',
+            color: modoFiltro === m ? 'var(--orange)' : 'var(--t3)',
+          }}>
+            {modoLabels[m]}
+            {m !== 'ALL' && (
+              <span style={{ marginLeft:5, opacity:0.7 }}>
+                ({matches.filter((x: any) => x.modo === m).length})
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
     <div style={{ overflowX:'auto' }}>
       <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:480 }}>
         <thead>
@@ -395,7 +422,11 @@ function MatchesTab({ matches }: any) {
           </tr>
         </thead>
         <tbody>
-          {matches.map((m: any, i: number) => {
+          {filtrados.length === 0 ? (
+            <tr><td colSpan={8} style={{ textAlign:'center', padding:32, color:'var(--t3)', fontSize:13 }}>
+              No {modoLabels[modoFiltro]} matches in history.
+            </td></tr>
+          ) : filtrados.map((m: any, i: number) => {
             const isW = m.resultado === 'VICTORIA', isL = m.resultado === 'DERROTA'
             const hs  = m.kills > 0 ? Math.round((m.headshots / m.kills) * 100) : 0
             const adr = m.dano_total > 0 ? Math.round(m.dano_total / 24) : 0
@@ -431,6 +462,7 @@ function MatchesTab({ matches }: any) {
           })}
         </tbody>
       </table>
+    </div>
     </div>
   )
 }

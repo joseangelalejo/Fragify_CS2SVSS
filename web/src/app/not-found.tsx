@@ -1,6 +1,9 @@
 // src/app/not-found.tsx
 import Link from 'next/link'
 
+import type { Metadata } from 'next'
+export const metadata: Metadata = { title: '404 — Target Lost' }
+
 export default function NotFound() {
   return (
     <div style={{

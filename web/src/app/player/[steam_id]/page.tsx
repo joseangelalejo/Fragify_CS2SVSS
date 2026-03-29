@@ -423,6 +423,11 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats, hasReal
               <div>
                 <div style={{ fontSize:9, color:'var(--t3)', letterSpacing:'0.08em' }}>BEST MAP</div>
                 <div style={{ fontSize:12, color:'var(--t1)', fontWeight:600 }}>{bestMap.mapa}</div>
+                {bestMap.ultima_partida_mapa && (
+                  <div style={{ fontSize:9, color:'var(--t3)' }}>
+                    {new Date(bestMap.ultima_partida_mapa).toLocaleDateString('en-US', { month:'short', year:'2-digit' })}
+                  </div>
+                )}
               </div>
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontSize:14, fontWeight:700, color:'#22c55e',
@@ -439,6 +444,11 @@ function Sidebar({ stats, rankHistory, steamProfile, steamId, csgoStats, hasReal
               <div>
                 <div style={{ fontSize:9, color:'var(--t3)', letterSpacing:'0.08em' }}>WORST MAP</div>
                 <div style={{ fontSize:12, color:'var(--t1)', fontWeight:600 }}>{worstMap.mapa}</div>
+                {worstMap.ultima_partida_mapa && (
+                  <div style={{ fontSize:9, color:'var(--t3)' }}>
+                    {new Date(worstMap.ultima_partida_mapa).toLocaleDateString('en-US', { month:'short', year:'2-digit' })}
+                  </div>
+                )}
               </div>
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontSize:14, fontWeight:700, color:'#ef4444',

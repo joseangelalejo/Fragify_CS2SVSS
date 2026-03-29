@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import { query } from '@/lib/db'
 
-export const metadata: Metadata = { title: 'All Matches' }
+export const metadata: Metadata = {
+  title: 'All Matches',
+  description: 'Live feed of recently processed CS2 competitive and wingman matches.',
+}
 export const dynamic = 'force-dynamic'
 
 async function getMatches() {
