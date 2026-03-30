@@ -1,3 +1,2 @@
-// Entry point handled by expo-router via app/ directory
-// This file intentionally left minimal
-export { default } from 'expo-router/entry'
+// expo-router handles routing via app/ directory
+// Entry point is expo-router/entry (see package.json main)
