@@ -130,3 +130,53 @@ ${respuesta}
     `,
   })
 }
+
+export async function send2FASetupEmail(email: string, nombre: string, otp: string) {
+  await resend.emails.send({
+    from:    FROM,
+    to:      email,
+    subject: 'Fragify — Código de verificación 2FA',
+    html: `
+      <!DOCTYPE html><html>
+      <body style="background:#0b0c10;color:#f1f2f5;font-family:Inter,sans-serif;padding:40px 20px;margin:0">
+        <div style="max-width:480px;margin:0 auto;background:#0f1014;border:1px solid #252836;border-radius:12px;padding:40px">
+          <h1 style="font-size:28px;font-weight:700;margin:0 0 8px">FRAG<span style="color:#f97316">IFY</span></h1>
+          <p style="color:#9ca3af;font-size:13px;margin:0 0 28px">Configuración de doble factor</p>
+          <h2 style="font-size:20px;margin:0 0 12px">Tu código de verificación</h2>
+          <p style="color:#9ca3af;font-size:14px;margin:0 0 24px">
+            Hola ${nombre}, usa este código para activar el 2FA en tu cuenta. Expira en <strong style="color:#f1f2f5">10 minutos</strong>.
+          </p>
+          <div style="background:#1a1b27;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px">
+            <span style="font-size:36px;font-weight:700;letter-spacing:8px;color:#f97316;font-family:monospace">${otp}</span>
+          </div>
+          <p style="color:#4b5563;font-size:12px">Si no has solicitado esto, ignora este email.</p>
+        </div>
+      </body></html>
+    `,
+  })
+}
+
+export async function send2FALoginEmail(email: string, nombre: string, otp: string) {
+  await resend.emails.send({
+    from:    FROM,
+    to:      email,
+    subject: 'Fragify — Código de acceso',
+    html: `
+      <!DOCTYPE html><html>
+      <body style="background:#0b0c10;color:#f1f2f5;font-family:Inter,sans-serif;padding:40px 20px;margin:0">
+        <div style="max-width:480px;margin:0 auto;background:#0f1014;border:1px solid #252836;border-radius:12px;padding:40px">
+          <h1 style="font-size:28px;font-weight:700;margin:0 0 8px">FRAG<span style="color:#f97316">IFY</span></h1>
+          <p style="color:#9ca3af;font-size:13px;margin:0 0 28px">Verificación de inicio de sesión</p>
+          <h2 style="font-size:20px;margin:0 0 12px">Código de acceso</h2>
+          <p style="color:#9ca3af;font-size:14px;margin:0 0 24px">
+            Hola ${nombre}, alguien está intentando acceder a tu cuenta. Expira en <strong style="color:#f1f2f5">10 minutos</strong>.
+          </p>
+          <div style="background:#1a1b27;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px">
+            <span style="font-size:36px;font-weight:700;letter-spacing:8px;color:#f97316;font-family:monospace">${otp}</span>
+          </div>
+          <p style="color:#4b5563;font-size:12px">Si no eres tú, cambia tu contraseña inmediatamente.</p>
+        </div>
+      </body></html>
+    `,
+  })
+}
