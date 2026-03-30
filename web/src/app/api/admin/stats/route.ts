@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
         (SELECT COUNT(*) FROM usuarios_fragify) AS users,
         (SELECT COUNT(*) FROM jugadores_cs2)    AS players,
         (SELECT COUNT(*) FROM rankings_cs2)     AS rankings,
-        (SELECT COUNT(*) FROM support_tickets WHERE estado = 'ABIERTO') AS tickets
+        (SELECT COUNT(*) FROM support_tickets WHERE estado = 'ABIERTO') AS tickets,
+        (SELECT COUNT(*) FROM reportes_conducta WHERE estado_reporte = 'PENDIENTE') AS reports_pending
     `),
     query<any[]>(`
       SELECT id_usuario, username, email, fecha_registro, steam_linked

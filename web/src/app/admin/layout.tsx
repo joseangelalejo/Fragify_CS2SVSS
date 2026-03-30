@@ -7,6 +7,7 @@ import Link from 'next/link'
 const LINKS = [
   { href: '/admin/dashboard', label: 'Dashboard',  icon: '📊' },
   { href: '/admin/support',   label: 'Support',     icon: '🎫' },
+  { href: '/admin/reports',   label: 'Reports',     icon: '🚩' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -321,7 +321,7 @@ export default async function PlayerProfilePage({ params }: Props) {
           bestMap={data.bestMap ?? null}
           worstMap={data.worstMap ?? null}
         />
-        <PlayerTabs data={data} csgoStats={csgoStats} />
+        <PlayerTabs data={data} csgoStats={csgoStats} steamId={steam_id} />
       </div>
     </>
   )

@@ -1,5 +1,7 @@
 'use client'
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { ReportModal } from '@/components/ui/ReportModal'
 
 type Tab = 'STATS' | 'GRAPHS' | 'MAPS' | 'MATCHES' | 'CSGO'
 
@@ -55,10 +57,14 @@ function WinCircle({ pct }: { pct: number }) {
   )
 }
 
-export function PlayerTabs({ data, csgoStats }: { data: any; csgoStats: any }) {
+export function PlayerTabs({ data, csgoStats, steamId }: { data: any; csgoStats: any; steamId: string }) {
   const tabs: Tab[] = csgoStats ? ['STATS','GRAPHS','MAPS','MATCHES','CSGO'] : ['STATS','GRAPHS','MAPS','MATCHES']
   const [tab, setTab] = useState<Tab>('STATS')
   const [modoFiltro, setModoFiltro] = useState<'ALL'|'COMPETITIVO'|'WINGMAN'>('ALL')
+  const [showReport, setShowReport] = useState(false)
+  const { data: session } = useSession()
+  const sessionUser = session?.user as any
+  const canReport = sessionUser?.steamId && sessionUser.steamId !== steamId
   const { stats, ranking, matches, maps, elo } = data
 
   return (
@@ -72,7 +78,26 @@ export function PlayerTabs({ data, csgoStats }: { data: any; csgoStats: any }) {
             {label}
           </span>
         ))}
+        {canReport && (
+          <button onClick={() => setShowReport(true)} style={{
+            marginLeft:'auto', fontSize:11, fontWeight:700, letterSpacing:'0.06em',
+            color:'#ef4444', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)',
+            padding:'3px 10px', borderRadius:4, cursor:'pointer',
+          }}>
+            🚩 Reportar
+          </button>
+        )}
       </div>
+
+      {/* Modal de reporte */}
+      {showReport && canReport && (
+        <ReportModal
+          steamId={steamId}
+          playerName={stats.nombre_usuario_steam}
+          reporterSteamId={sessionUser.steamId}
+          onClose={() => setShowReport(false)}
+        />
+      )}
 
       {/* Tabs — scroll horizontal en móvil */}
       <div style={{ display:'flex', borderBottom:'1px solid var(--bg-border)', padding:'0 8px', overflowX:'auto' }}>

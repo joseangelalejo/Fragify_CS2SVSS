@@ -22,10 +22,11 @@ export default function AdminDashboard() {
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:24 }}>
         {[
-          { label:'TOTAL USERS',    value: stats?.users    ?? '—' },
-          { label:'PLAYERS',        value: stats?.players  ?? '—' },
-          { label:'OPEN TICKETS',   value: stats?.tickets  ?? '—' },
-          { label:'RANKINGS',       value: stats?.rankings ?? '—' },
+          { label:'TOTAL USERS',       value: stats?.users           ?? '—' },
+          { label:'PLAYERS',           value: stats?.players         ?? '—' },
+          { label:'OPEN TICKETS',      value: stats?.tickets         ?? '—' },
+          { label:'RANKINGS',          value: stats?.rankings        ?? '—' },
+          { label:'REPORTS PENDING',   value: stats?.reports_pending ?? '—' },
         ].map(s => (
           <div key={s.label} style={S.card}>
             <div style={S.stat}>
