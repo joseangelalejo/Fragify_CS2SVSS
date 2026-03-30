@@ -4,6 +4,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { Providers } from '@/components/auth/Providers'
 import { SupportButton } from '@/components/ui/SupportButton'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata: Metadata = {
   title:       { default: 'Fragify — CS2 Stats', template: '%s | Fragify' },
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
           <Footer />
           <SupportButton />
+          <Analytics />
         </Providers>
       </body>
     </html>
