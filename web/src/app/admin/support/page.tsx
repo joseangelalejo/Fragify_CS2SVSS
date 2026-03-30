@@ -71,7 +71,8 @@ export default function AdminSupportPage() {
         {tickets.length === 0 ? (
           <p style={{ color:'var(--t3)', fontSize:13 }}>No tickets with status: {filter}</p>
         ) : (
-          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
+          <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:600 }}>
             <thead>
               <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
                 {['#','Name','Email','Subject','Category','Status','Date',''].map(h => (
@@ -98,6 +99,7 @@ export default function AdminSupportPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

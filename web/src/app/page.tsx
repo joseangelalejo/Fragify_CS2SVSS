@@ -31,8 +31,8 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <div style={{ textAlign:'center', padding:'48px 16px 40px' }}>
-        <h1 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:48, fontWeight:700,
+      <div style={{ textAlign:'center', padding:'32px 16px 28px' }}>
+        <h1 style={{ fontFamily:'Rajdhani,sans-serif', fontSize:'clamp(32px,8vw,48px)', fontWeight:700,
                      letterSpacing:'0.06em', marginBottom:12 }}>
           CS2 <span style={{ color:'var(--orange)' }}>STATS</span>
         </h1>

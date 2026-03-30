@@ -307,6 +307,12 @@ export default async function PlayerProfilePage({ params }: Props) {
         @media (max-width: 768px) {
           .player-layout {
             grid-template-columns: 1fr;
+            gap: 12px;
+          }
+        }
+        @media (max-width: 480px) {
+          .player-layout {
+            gap: 8px;
           }
         }
       `}</style>

@@ -40,7 +40,8 @@ export default function AdminDashboard() {
       <div style={S.card}>
         <div style={S.title}>RECENT REGISTRATIONS</div>
         {stats?.recent?.length > 0 ? (
-          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
+          <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:400 }}>
             <thead>
               <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
                 {['Username','Email','Registered','Steam'].map(h => (
@@ -61,6 +62,7 @@ export default function AdminDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         ) : (
           <p style={{ color:'var(--t3)', fontSize:13 }}>No recent registrations.</p>
         )}

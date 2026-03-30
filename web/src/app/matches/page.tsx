@@ -64,7 +64,8 @@ export default async function MatchesPage() {
       </p>
       <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
                     borderRadius:8, overflow:'hidden' }}>
-        <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
+        <div style={{ overflowX:'auto' }}>
+        <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:520 }}>
           <thead>
             <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
               {['Mode','Date','Map','Score','Players','K','D','A','Min'].map(h => (
@@ -122,6 +123,7 @@ export default async function MatchesPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

@@ -83,7 +83,8 @@ export default function AdminReportsPage() {
             No hay reportes con estado {filter}.
           </div>
         ) : (
-          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
+          <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:640 }}>
             <thead>
               <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
                 {['#','Reportado','Reportador','Tipo','Severidad','Fecha','Estado',''].map(h => (
@@ -136,6 +137,7 @@ export default function AdminReportsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

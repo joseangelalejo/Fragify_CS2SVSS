@@ -50,7 +50,8 @@ export default function MyTicketsPage() {
             <span style={{ fontSize:12 }}>Usa el botón ❓ en la esquina inferior derecha para contactar con soporte.</span>
           </div>
         ) : (
-          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
+          <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:500 }}>
             <thead>
               <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
                 {['#','Asunto','Categoría','Estado','Fecha','Respuesta',''].map(h => (
@@ -98,6 +99,7 @@ export default function MyTicketsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

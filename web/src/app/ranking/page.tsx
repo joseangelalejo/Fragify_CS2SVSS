@@ -198,6 +198,7 @@ export default function RankingPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -275,6 +276,7 @@ export default function RankingPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
