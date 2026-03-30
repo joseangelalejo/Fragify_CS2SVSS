@@ -199,14 +199,14 @@ export default function RankingPage() {
             </tbody>
           </table>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Tabla COMPETITIVE */}
       {tab === 'COMPETITIVE' && (
         <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-border)',
                       borderRadius:8, overflow:'hidden' }}>
-          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse' }}>
+          <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%', fontSize:13, borderCollapse:'collapse', minWidth:480 }}>
             <thead>
               <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
                 {['#','Player','Matches','Wins','Win Rate','K/D'].map(h => (
