@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/profile/settings', label: 'Settings',     icon: '⚙️' },
   { href: '/profile/steam',    label: 'Steam & CS2',  icon: '🎮' },
   { href: '/profile/security', label: 'Security',     icon: '🔒' },
+  { href: '/profile/tickets',  label: 'My Tickets',   icon: '🎫' },
 ]
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
