@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 // @ts-ignore
-const { authenticator } = require('otplib')
+import { authenticator } from 'otplib'
 import { send2FALoginEmail } from '@/lib/email'
 import crypto from 'crypto'
 
