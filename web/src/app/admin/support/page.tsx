@@ -24,8 +24,10 @@ export default function AdminSupportPage() {
   const [tickets, setTickets]   = useState<any[]>([])
   const [filter,  setFilter]    = useState('ABIERTO')
   const [selected, setSelected] = useState<any>(null)
-  const [notas,   setNotas]     = useState('')
-  const [saving,  setSaving]    = useState(false)
+  const [notas,    setNotas]    = useState('')
+  const [respuesta, setRespuesta] = useState('')
+  const [saving,   setSaving]   = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   function load(estado: string) {
     fetch(`/api/support?estado=${estado}`).then(r => r.json()).then(d => setTickets(d.tickets ?? []))
@@ -34,13 +36,15 @@ export default function AdminSupportPage() {
   useEffect(() => { load(filter) }, [filter])
 
   async function updateTicket(id: number, estado: string) {
-    setSaving(true)
-    await fetch('/api/support', {
+    setSaving(true); setEmailSent(false)
+    const res  = await fetch('/api/support', {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, estado, notas_admin: notas }),
+      body:    JSON.stringify({ id, estado, notas_admin: notas, respuesta_admin: respuesta }),
     })
+    const data = await res.json()
     setSaving(false)
+    setEmailSent(data.emailSent === true)
     setSelected(null)
     load(filter)
   }
@@ -86,7 +90,7 @@ export default function AdminSupportPage() {
                   <td style={{ padding:'9px 10px' }}><span style={S.badge(estColor[t.estado] ?? '#9ca3af')}>{t.estado}</span></td>
                   <td style={{ padding:'9px 10px', color:'var(--t3)', fontSize:11 }}>{new Date(t.fecha_creacion).toLocaleDateString()}</td>
                   <td style={{ padding:'9px 10px' }}>
-                    <button onClick={() => { setSelected(t); setNotas(t.notas_admin ?? '') }} style={S.btn}>
+                    <button onClick={() => { setSelected(t); setNotas(t.notas_admin ?? ''); setRespuesta(t.respuesta_admin ?? ''); setEmailSent(false) }} style={S.btn}>
                       View
                     </button>
                   </td>
@@ -123,10 +127,30 @@ export default function AdminSupportPage() {
             </div>
 
             <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:12, color:'var(--t3)', display:'block', marginBottom:6 }}>Admin Notes</label>
+              <label style={{ fontSize:12, color:'var(--t3)', display:'block', marginBottom:6 }}>
+                Admin Notes <span style={{ fontWeight:400 }}>(interno, el usuario no lo ve)</span>
+              </label>
               <textarea value={notas} onChange={e => setNotas(e.target.value)}
-                style={{ width:'100%', background:'#0d0e13', border:'1px solid var(--bg-border)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'var(--t1)', outline:'none', resize:'vertical', minHeight:80, boxSizing:'border-box' }}
+                style={{ width:'100%', background:'#0d0e13', border:'1px solid var(--bg-border)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'var(--t1)', outline:'none', resize:'vertical', minHeight:60, boxSizing:'border-box' }}
               />
+            </div>
+
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, color:'var(--t3)', display:'block', marginBottom:6 }}>
+                Respuesta al usuario{' '}
+                <span style={{ color:'#22c55e', fontWeight:400 }}>✉️ Se enviará por email al guardar</span>
+              </label>
+              <textarea value={respuesta} onChange={e => setRespuesta(e.target.value)}
+                style={{ width:'100%', background:'#0d0e13', border:'1px solid rgba(34,197,94,0.3)', borderRadius:6, padding:'10px 12px', fontSize:13, color:'var(--t1)', outline:'none', resize:'vertical', minHeight:100, boxSizing:'border-box' }}
+                placeholder="Escribe aquí la respuesta que verá el usuario en su email..."
+                onFocus={e => (e.target.style.borderColor = '#22c55e')}
+                onBlur={e  => (e.target.style.borderColor = 'rgba(34,197,94,0.3)')}
+              />
+              {selected?.fecha_respuesta && (
+                <div style={{ fontSize:11, color:'var(--t3)', marginTop:4 }}>
+                  Última respuesta enviada: {new Date(selected.fecha_respuesta).toLocaleString('es-ES')}
+                </div>
+              )}
             </div>
 
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>

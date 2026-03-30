@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { sendTelegram } from '@/lib/telegram'
+import { sendTicketResponseEmail } from '@/lib/email'
 
 function getIP(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '0.0.0.0'
@@ -74,7 +75,10 @@ export async function GET(req: NextRequest) {
 
   const estado  = req.nextUrl.searchParams.get('estado') ?? 'ABIERTO'
   const tickets = await query<any[]>(
-    `SELECT * FROM support_tickets WHERE estado = ? ORDER BY fecha_creacion DESC LIMIT 100`,
+    `SELECT id, nombre, email, asunto, mensaje, categoria, estado,
+            id_usuario, fecha_creacion, fecha_update, notas_admin,
+            respuesta_admin, fecha_respuesta
+     FROM support_tickets WHERE estado = ? ORDER BY fecha_creacion DESC LIMIT 100`,
     [estado]
   )
   return NextResponse.json({ tickets })
@@ -86,10 +90,42 @@ export async function PATCH(req: NextRequest) {
   if (!session || (session.user as any)?.role !== 'ADMIN')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
-  const { id, estado, notas_admin } = await req.json()
-  await query(
-    `UPDATE support_tickets SET estado = ?, notas_admin = ? WHERE id = ?`,
-    [estado, notas_admin ?? null, id]
+  const { id, estado, notas_admin, respuesta_admin } = await req.json()
+
+  // Obtener datos del ticket para el email
+  const [ticket] = await query<any[]>(
+    `SELECT nombre, email, asunto, respuesta_admin AS resp_anterior FROM support_tickets WHERE id = ?`,
+    [id]
   )
-  return NextResponse.json({ ok: true })
+  if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+
+  const tieneRespuestaNueva = respuesta_admin && respuesta_admin.trim() &&
+                              respuesta_admin.trim() !== (ticket.resp_anterior ?? '').trim()
+
+  // Actualizar ticket
+  await query(
+    `UPDATE support_tickets
+     SET estado = ?,
+         notas_admin = ?,
+         respuesta_admin = ?,
+         fecha_respuesta = CASE WHEN ? IS NOT NULL AND ? != '' THEN NOW() ELSE fecha_respuesta END
+     WHERE id = ?`,
+    [estado, notas_admin ?? null, respuesta_admin ?? null,
+     respuesta_admin, respuesta_admin, id]
+  )
+
+  // Enviar email al usuario si hay respuesta nueva
+  if (tieneRespuestaNueva && ticket.email) {
+    try {
+      await sendTicketResponseEmail(
+        ticket.email, ticket.nombre, ticket.asunto,
+        id, respuesta_admin.trim(), estado
+      )
+    } catch (err) {
+      console.error('[support PATCH] email error:', err)
+      // No bloqueamos si el email falla
+    }
+  }
+
+  return NextResponse.json({ ok: true, emailSent: tieneRespuestaNueva && !!ticket.email })
 }
