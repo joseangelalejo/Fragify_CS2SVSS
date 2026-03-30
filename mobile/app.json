@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Fragify",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0c10"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.miniaturemistery.fragify"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b0c10"
+      },
+      "package": "com.miniaturemistery.fragify",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#f97316"
+        }
+      ]
+    ],
+    "scheme": "fragify",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "74dfb60c-c95f-49af-ba9b-bfbda77f44f6"
+      },
+      "apiUrl": "https://fragify.miniserver.online"
+    },
+    "owner": "miniaturemistery"
+  }
+}
