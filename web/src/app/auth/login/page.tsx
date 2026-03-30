@@ -43,6 +43,14 @@ function LoginForm() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [success,  setSuccess]  = useState('')
+  // 2FA state
+  const [twoFaStep,   setTwoFaStep]   = useState(false)
+  const [twoFaMethod, setTwoFaMethod] = useState<'TOTP'|'EMAIL'|null>(null)
+  const [twoFaCode,   setTwoFaCode]   = useState('')
+  const [twoFaUserId, setTwoFaUserId] = useState<string|null>(null)
+  const [backupMode,  setBackupMode]  = useState(false)
+  const [backupCode,  setBackupCode]  = useState('')
+  const [sending2FA,  setSending2FA]  = useState(false)
 
   useEffect(() => {
     const verified = searchParams.get('verified')
@@ -65,8 +73,43 @@ function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
-    const res = await signIn('credentials', { email, password, redirect: false })
+
+    // Verificar si tiene 2FA antes de hacer signIn
+    const checkRes = await fetch('/api/auth/2fa/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const checkData = await checkRes.json()
     setLoading(false)
+
+    if (!checkRes.ok) {
+      if (checkData.error === 'EMAIL_NOT_VERIFIED') setError('Please verify your email before logging in.')
+      else if (checkData.error === 'USE_STEAM')     setError('This account was created with Steam. Please use Sign in with Steam.')
+      else setError(checkData.error ?? 'Invalid email or password.')
+      return
+    }
+
+    // Si tiene 2FA activo → paso de verificación
+    if (checkData.requires2FA) {
+      setTwoFaUserId(checkData.userId)
+      setTwoFaMethod(checkData.method)
+      setTwoFaStep(true)
+      // Si es EMAIL → solicitar OTP automáticamente
+      if (checkData.method === 'EMAIL') {
+        setSending2FA(true)
+        await fetch('/api/auth/2fa/verify', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: checkData.userId }),
+        })
+        setSending2FA(false)
+      }
+      return
+    }
+
+    // Sin 2FA → login normal
+    const res = await signIn('credentials', { email, password, redirect: false })
     if (res?.error) {
       if (res.error === 'EMAIL_NOT_VERIFIED') setError('Please verify your email before logging in.')
       else if (res.error === 'USE_STEAM')     setError('This account was created with Steam. Please use Sign in with Steam.')
@@ -76,8 +119,118 @@ function LoginForm() {
     }
   }
 
+  async function handle2FASubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true); setError('')
+    const body: any = backupMode
+      ? { userId: twoFaUserId, backup: backupCode }
+      : { userId: twoFaUserId, code: twoFaCode }
+
+    const res  = await fetch('/api/auth/2fa/verify', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!res.ok) { setLoading(false); setError(data.error ?? 'Código incorrecto'); return }
+
+    // 2FA OK → completar login
+    const signRes = await signIn('credentials', { email, password, redirect: false })
+    setLoading(false)
+    if (signRes?.error) { setError('Error al completar el login'); return }
+    router.push('/profile')
+  }
+
   function handleSteamLogin() {
     window.location.href = buildSteamOpenIDUrl()
+  }
+
+  // Pantalla de verificación 2FA
+  if (twoFaStep) {
+    return (
+      <div style={S.wrap}>
+        <div style={S.card}>
+          <div style={S.logo}>FRAG<span style={{ color:'var(--orange)' }}>IFY</span></div>
+          <div style={S.sub}>Two-Factor Authentication</div>
+
+          {error && <div style={S.error}>{error}</div>}
+
+          {sending2FA ? (
+            <div style={{ textAlign:'center', color:'var(--t3)', padding:'20px 0' }}>
+              Sending code to your email...
+            </div>
+          ) : (
+            <form onSubmit={handle2FASubmit}>
+              {!backupMode ? (
+                <>
+                  <div style={{ textAlign:'center', fontSize:13, color:'var(--t2)', marginBottom:20 }}>
+                    {twoFaMethod === 'TOTP'
+                      ? '🔐 Enter the 6-digit code from your authenticator app.'
+                      : '📧 Enter the 6-digit code sent to your email.'}
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Verification Code</label>
+                    <input
+                      type="text" inputMode="numeric" pattern="[0-9]{6}"
+                      maxLength={6} value={twoFaCode}
+                      onChange={e => setTwoFaCode(e.target.value.replace(/\D/g,''))}
+                      style={{ ...S.input, textAlign:'center', fontSize:24, letterSpacing:'8px', fontFamily:'monospace' }}
+                      placeholder="000000" autoFocus required
+                      onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+                      onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+                    />
+                  </div>
+                  <button type="submit" disabled={loading || twoFaCode.length < 6}
+                          style={{ ...S.btn, opacity: (loading || twoFaCode.length < 6) ? 0.6 : 1 }}>
+                    {loading ? 'Verifying...' : 'Verify'}
+                  </button>
+                  {twoFaMethod === 'EMAIL' && (
+                    <button type="button" onClick={async () => {
+                      setSending2FA(true)
+                      await fetch('/api/auth/2fa/verify', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: twoFaUserId }),
+                      })
+                      setSending2FA(false)
+                    }} style={{ ...S.btn, marginTop:8, background:'transparent',
+                                border:'1px solid var(--bg-border)', color:'var(--t3)' }}>
+                      Resend code
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ textAlign:'center', fontSize:13, color:'var(--t2)', marginBottom:20 }}>
+                    🔑 Enter your 8-character backup code.
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Backup Code</label>
+                    <input
+                      type="text" value={backupCode}
+                      onChange={e => setBackupCode(e.target.value.toUpperCase())}
+                      style={{ ...S.input, textAlign:'center', fontSize:16, letterSpacing:'4px', fontFamily:'monospace' }}
+                      placeholder="XXXXXXXX" maxLength={8} autoFocus required
+                      onFocus={e => (e.target.style.borderColor = 'var(--orange)')}
+                      onBlur={e  => (e.target.style.borderColor = 'var(--bg-border)')}
+                    />
+                  </div>
+                  <button type="submit" disabled={loading}
+                          style={{ ...S.btn, opacity: loading ? 0.6 : 1 }}>
+                    {loading ? 'Verifying...' : 'Use Backup Code'}
+                  </button>
+                </>
+              )}
+              <div style={{ textAlign:'center', marginTop:16, fontSize:12 }}>
+                <button type="button" onClick={() => { setBackupMode(b => !b); setError('') }}
+                        style={{ background:'none', border:'none', color:'var(--orange)', cursor:'pointer', fontSize:12 }}>
+                  {backupMode ? '← Back to verification code' : "Lost access? Use backup code"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
