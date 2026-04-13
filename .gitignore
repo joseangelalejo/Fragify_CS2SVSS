@@ -1,34 +1,58 @@
-# ── Entorno — NUNCA al repo
+# Environment variables — NUNCA subir a git
 .env
 .env.local
 .env.*.local
+.env*.local
 docker/.env
 
-# ── Node
+# Node.js
 node_modules/
 .pnp
 .pnp.js
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-error.log*
 
-# ── Next.js
-web/.next/
-web/out/
-web/build/
+# Next.js
+.next/
+out/
+build/
+dist/
 
-# ── Backups (solo local)
-backups/
-
-# ── Logs
-*.log
-logs/
-
-# ── OS
+# OS
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
-# ── IDE
-.vscode/settings.json
+# IDE
+.vscode/
 .idea/
+*.sublime-workspace
+*.sublime-project
 
-# ── Docker datos locales
+# Logs
+logs/
+*.log
+
+# Backups
+*.bak
+*.backup
+backups/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Vercel
+.vercel
+.vercelignore
+
+# Development
+tsconfig.tsbuildinfo
+.turbo
+
+# Docker datos locales
 docker/mysql/data/
-docker/package-lock.json
