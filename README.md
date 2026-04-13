@@ -1,33 +1,100 @@
-# Fragify — CS2 Stats Platform
+# ⭐ Fragify — Counter-Strike 2 Stats Platform
 
-![Fragify](./Imagenes_Proyecto/02_logo_horizontal_1200x300.png)
+Plataforma web de estadísticas para **Counter-Strike 2** con registro de 2,904 partidas reales importadas desde Steam. Perfiles de jugador, leaderboards, integraciones con Telegram y panel administrativo completo.
 
-> **CS2-SVSS** · Proyecto académico DAW 2025–2027 · José Ángel Alejo Sillero  
-> Instituto Tecnológico Pablo de la Torre
+**Proyecto académico DAW 2025** con calificaciones 10/10, 10/10 y 9.5/10.
 
-Plataforma web de estadísticas para Counter-Strike 2. Historial real importado desde Steam (2,904 partidas),
-perfiles de jugador, leaderboards, bot de Telegram y panel de administración.
+<div align="center">
+
+![Next.js](https://img.shields.io/badge/Next.js-15.5-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![TiDB Cloud](https://img.shields.io/badge/TiDB-Cloud-00D988?style=for-the-badge&logo=tidb&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-Deploy-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
 🌐 **[fragify.miniserver.online](https://fragify.miniserver.online)**
 
----
+</div>
 
-## Stack
+## 🎯 Características principales
 
-| Capa           | Tecnología                                 |
-|----------------|--------------------------------------------|
-| Frontend + API | Next.js 15.5 + TypeScript                  |
-| Auth           | Auth.js v5 (Steam OpenID + email/password) |
-| Base de datos  | TiDB Cloud Serverless (Frankfurt)          |
-| Deploy         | Vercel (Hobby)                             |
-| Email          | Resend                                     |
-| Almacenamiento | Vercel Blob (avatares)                     |
-| Alertas        | Telegram Bot API                           |
-| Homelab        | Proxmox → Debian VM → Docker Compose       |
+✅ **2,904 partidas reales** — Importadas desde Steam  
+✅ **Perfiles de jugador** — K/D, HS%, win rate, historiales  
+✅ **Leaderboards** — Premier y Competitive  
+✅ **Filtros dinámicos** — Por modo, rango, mapa  
+✅ **Telegram bot** — Notificaciones y webhooks  
+✅ **Panel admin** — Gestión de datos y usuarios  
+✅ **Auth multicanal** — Steam OpenID + email/password  
+✅ **Vercel + Proxmox** — Deploy en múltiples plataformas  
 
----
+## 🛠️ Stack técnico
 
-## Funcionalidades
+| Capa         | Tecnología                                  |
+|--------------|---------------------------------------------|
+| **Frontend** | Next.js 15.5 + React 19 + TypeScript        |
+| **Auth**     | Auth.js v5 (Steam OpenID2 + email/password) |
+| **BD**       | TiDB Cloud Serverless (MySQL-compatible)    |
+| **API**      | RESTful con Next.js API Routes              |
+| **Deploy**   | Vercel + Docker en Proxmox                  |
+| **Bot**      | Telegram Bot API con webhooks               |
+| **Storage**  | Vercel Blob (avatares)                      |
+
+## 🚀 Quick Start
+
+```bash
+# Clonar repositorio
+git clone https://github.com/joseangelalejo/Fragify_CS2SVSS.git
+cd Fragify_CS2SVSS
+
+# Instalar dependencias
+npm install
+
+# Configurar variables
+cp .env.example .env.local
+# → Edita con tus credenciales Steam, TiDB, Telegram, etc.
+
+# Desarrollo
+npm run dev
+
+# Build para producción
+npm run build
+npm start
+```
+
+## 📊 Importar datos desde Steam
+
+```bash
+# Script para importar historiales desde Steam API
+npm run import:steam -- --user_id=YOUR_STEAM_ID
+```
+
+## 🤖 Configurar Telegram Bot
+
+1. Crea un bot en [@BotFather](https://t.me/botfather)
+2. Obtén el token y User ID
+3. Configura en `.env.local`:
+
+```env
+TELEGRAM_BOT_TOKEN=your_token
+TELEGRAM_ADMIN_ID=your_user_id
+```
+
+## 📚 Documentación completa
+
+→ **[joseangelalejo.github.io/Fragify_CS2SVSS](https://joseangelalejo.github.io/Fragify_CS2SVSS/)**
+
+## 🏆 Detalles académicos
+
+- 📚 **Proyecto**: CS2-SVSS (Counter-Strike 2 Stats Visualization & System Services)
+- 🏫 **Centro**: Instituto Tecnológico Pablo de la Torre, Sevilla
+- 🎓 **Ciclo**: Desarrollo de Aplicaciones Web (DAW)
+- ⭐ **Calificación**: 10/10 · 10/10 · 9.5/10
+
+## 🔗 Enlaces
+
+- 🌐 [Sitio en vivo](https://fragify.miniserver.online)
+- 📖 [Documentación](https://joseangelalejo.github.io/Fragify_CS2SVSS/)
+- 💾 [GitHub Repo](https://github.com/joseangelalejo/Fragify_CS2SVSS)
+- 🐛 [Reportar bugs](https://github.com/joseangelalejo/Fragify_CS2SVSS/issues)
 
 ### Perfiles de jugador
 
