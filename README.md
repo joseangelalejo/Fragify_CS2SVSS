@@ -168,7 +168,7 @@ TELEGRAM_ADMIN_ID=your_user_id
 │  Homelab — Proxmox → Debian Trixie VM                        │
 │  ├── Docker Compose (MySQL local dev + túnel TiDB)          │
 │  ├── backup.sh — backup diario a las 3:00 AM                │
-│  └── Tailscale (100.66.214.108)                             │
+│  └── Tailscale (VPN)                             │
 └──────────────────────────────────────────────────────────────┘
 ```
 
