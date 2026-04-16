@@ -17,6 +17,15 @@ export const metadata: Metadata = {
     locale:      'en_US',
     type:        'website',
   },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  other: {
+    robots: 'noai, noimageai',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
