@@ -11,7 +11,7 @@ Plataforma web de estadísticas para **Counter-Strike 2** con registro de 2,904 
 ![TiDB Cloud](https://img.shields.io/badge/TiDB-Cloud-00D988?style=for-the-badge&logo=tidb&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-Deploy-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
-🌐 **[fragify.miniserver.online](https://fragify.miniserver.online)**
+🌐 **[fragify.joseangelinfra.dev](https://fragify.joseangelinfra.dev)**
 
 </div>
 
@@ -91,7 +91,7 @@ TELEGRAM_ADMIN_ID=your_user_id
 
 ## 🔗 Enlaces
 
-- 🌐 [Sitio en vivo](https://fragify.miniserver.online)
+- 🌐 [Sitio en vivo](https://fragify.joseangelinfra.dev)
 - 📖 [Documentación](https://joseangelalejo.github.io/Fragify_CS2SVSS/)
 - 💾 [GitHub Repo](https://github.com/joseangelalejo/Fragify_CS2SVSS)
 - 🐛 [Reportar bugs](https://github.com/joseangelalejo/Fragify_CS2SVSS/issues)
@@ -146,7 +146,7 @@ TELEGRAM_ADMIN_ID=your_user_id
 └───────────────────────┬──────────────────────────────────────┘
                         │ HTTPS
 ┌───────────────────────▼──────────────────────────────────────┐
-│  Vercel — fragify.miniserver.online                          │
+│  Vercel — fragify.joseangelinfra.dev                          │
 │  Next.js 15.5 (SSR + API routes)                            │
 │  ├── /player/[steam_id]     Perfil de jugador               │
 │  ├── /ranking               Leaderboards Premier/Competitive │
@@ -266,13 +266,13 @@ Fragify_CS2SVSS/
 ```env
 DATABASE_URL=mysql://user:pass@host:port/db?ssl=true
 NEXTAUTH_SECRET=tu_secret_aleatorio
-NEXTAUTH_URL=https://fragify.miniserver.online
+NEXTAUTH_URL=https://fragify.joseangelinfra.dev
 STEAM_API_KEY=tu_clave_steam
 ADMIN_STEAM_ID=tu_steam_id64
 TELEGRAM_BOT_TOKEN=token_del_bot
 TELEGRAM_CHAT_ID=tu_chat_id
 RESEND_API_KEY=re_xxxx
-NEXT_PUBLIC_APP_URL=https://fragify.miniserver.online
+NEXT_PUBLIC_APP_URL=https://fragify.joseangelinfra.dev
 CRON_SECRET=tu_cron_secret
 ```
 
@@ -291,15 +291,15 @@ npm run dev   # http://localhost:3000
 
 ```bash
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-     -d "url=https://fragify.miniserver.online/api/telegram/webhook"
+     -d "url=https://fragify.joseangelinfra.dev/api/telegram/webhook"
 ```
 
 ### Cron del homelab
 
 ```cron
 # Monitor cada 30 segundos
-* * * * * curl -sf -H "x-cron-secret: SECRET" https://fragify.miniserver.online/api/cron/monitor
-* * * * * sleep 30; curl -sf -H "x-cron-secret: SECRET" https://fragify.miniserver.online/api/cron/monitor
+* * * * * curl -sf -H "x-cron-secret: SECRET" https://fragify.joseangelinfra.dev/api/cron/monitor
+* * * * * sleep 30; curl -sf -H "x-cron-secret: SECRET" https://fragify.joseangelinfra.dev/api/cron/monitor
 
 # Backup diario 3:00 AM
 0 3 * * * /home/dockerja/scripts/backup.sh
