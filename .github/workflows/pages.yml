@@ -21,14 +21,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1.0.13
-        with:
-          source: ./docs
-          destination: ./_site
-
-      - name: Upload artifact
+      - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
 
   deploy:
     environment:
