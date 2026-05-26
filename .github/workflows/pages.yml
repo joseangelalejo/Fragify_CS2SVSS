@@ -1,9 +1,9 @@
-name: Build and Deploy GitHub Pages
+name: Build and deploy site
 
 on:
   push:
-    branches: ["main"]
-  workflow_dispatch:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -11,28 +11,30 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/checkout@7dd9e2a3dc350cf687eb1b2a4fadfee8c33e5e44
         with:
-          path: './docs'
+          fetch-depth: 0
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3.0.1
+        with:
+          path: docs
 
   deploy:
+    runs-on: ubuntu-latest
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy to Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@13c3e0490491b10370b2712518ac7aa57b6fe265
