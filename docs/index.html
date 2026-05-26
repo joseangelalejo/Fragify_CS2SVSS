@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fragify - CS2 Stats Visualizing System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1f2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 60px 20px 40px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            color: #ffc107;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            color: #90a4ae;
+            margin-bottom: 30px;
+        }
+        
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        
+        .doc-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 25px;
+            text-decoration: none;
+            color: #e0e0e0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+        
+        .doc-card:hover {
+            background: rgba(255, 193, 7, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255, 193, 7, 0.2);
+        }
+        
+        .doc-card h2 {
+            color: #ffc107;
+            margin-bottom: 12px;
+            font-size: 1.4em;
+        }
+        
+        .doc-card p {
+            color: #b0bec5;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        
+        .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+            border-top: 1px solid rgba(255, 193, 7, 0.2);
+            margin-top: 60px;
+        }
+        
+        .github-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #ffc107;
+            color: #1a1f2e;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .github-link:hover {
+            background: #ffb300;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔥 FRAGIFY</h1>
+            <p class="subtitle">Counter-Strike 2 Stats Visualizing System</p>
+            <p style="color: #90a4ae; margin-bottom: 20px;">Sistema de Análisis y Visualización de Estadísticas en Tiempo Real</p>
+        </header>
+        
+        <main>
+            <section class="docs-grid">
+                <a href="README.html" class="doc-card">
+                    <div class="icon">📖</div>
+                    <h2>Introducción</h2>
+                    <p>Comienza aquí. Aprende qué es Fragify y cómo puede ayudarte a analizar datos de CS2.</p>
+                </a>
+                
+                <a href="quick-start.html" class="doc-card">
+                    <div class="icon">🚀</div>
+                    <h2>Quick Start</h2>
+                    <p>Guía rápida para configurar e implementar Fragify en tu entorno.</p>
+                </a>
+                
+                <a href="deployment.html" class="doc-card">
+                    <div class="icon">🚢</div>
+                    <h2>Despliegue</h2>
+                    <p>Instrucciones detalladas para desplegar Fragify en producción.</p>
+                </a>
+                
+                <a href="config.html" class="doc-card">
+                    <div class="icon">⚙️</div>
+                    <h2>Configuración</h2>
+                    <p>Aprende a configurar todos los parámetros y opciones disponibles.</p>
+                </a>
+                
+                <a href="api.html" class="doc-card">
+                    <div class="icon">🔌</div>
+                    <h2>API Reference</h2>
+                    <p>Referencia completa de la API y endpoints disponibles.</p>
+                </a>
+            </section>
+        </main>
+        
+        <footer>
+            <a href="https://github.com/joseangelalejo/Fragify_CS2SVSS" class="github-link">
+                Ver en GitHub ⭐
+            </a>
+            <p style="margin-top: 20px;">© 2026 Fragify - Todos los derechos reservados</p>
+        </footer>
+    </div>
+</body>
+</html>
